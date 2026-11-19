@@ -390,7 +390,7 @@ a { color: var(--gold); }
 .check-btn {
   width: 30px; height: 30px; flex: none; margin-top: 1px;
   border-radius: 9px; border: 1.5px solid var(--line);
-  background: #14110e; color: transparent; cursor: pointer;
+  background: #14110e; color: rgba(255, 255, 255, .16); cursor: pointer;
   display: grid; place-items: center; font-size: 14px; font-weight: 800;
 }
 .check-btn.on { background: rgba(76, 175, 117, .18); border-color: var(--green); color: var(--green); }
@@ -611,3 +611,14 @@ a { color: var(--gold); }
 }
 .divider { height: 1px; background: var(--line-soft); margin: 12px 0; }
 .scroll-x { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+/* ---------- 터치 기기에서는 누름 영역을 44px 이상으로 ---------- */
+@media (pointer: coarse) {
+  .icon-btn { width: 42px; height: 42px; }
+  .btn.icon.small { min-width: 42px; min-height: 42px; }
+  .check-btn { width: 34px; height: 34px; }
+  .mini-x { padding: 12px 10px; }
+  .tab { min-height: 42px; }
+  .step-btn { min-width: 44px; min-height: 44px; }
+  .link-btn { padding: 8px 2px; }
+}

@@ -80,6 +80,7 @@ export function syncSnapshot() {
 
 export function chipLabel(cfg) {
   const c = cfg || readCfg();
+  if (!navigator.onLine) { return c.token ? '오프라인 · 저장 대기' : '오프라인'; }
   if (!c.token) { return '동기화 꺼짐'; }
   if (sync.busy) { return '동기화 중'; }
   if (c.lastError) { return '동기화 오류'; }
