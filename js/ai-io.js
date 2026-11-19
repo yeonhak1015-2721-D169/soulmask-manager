@@ -5,6 +5,7 @@
 */
 import { CATEGORIES, PRIORITIES } from './data.js';
 import { todayKey, dateLabel, str, lines, pct, num } from './util.js';
+import { PROFICIENCY_GRADES, getMemberGrade, needsReplacement } from './tribes-util.js';
 
 function stamp() {
   const d = new Date();
@@ -149,6 +150,12 @@ export function buildTribes(state) {
   out.push('# 부족원 현황');
   out.push('');
   out.push(`- 정원: ${capacity}명 / 현재 ${members.length}명 / 잔여 ${Math.max(0, capacity - members.length)}자리`);
+  const gradeTally = { must: 0, need: 0, review: 0, done: 0, none: 0 };
+  members.forEach((m) => { const t = getMemberGrade(m).tier; gradeTally[t] = (gradeTally[t] || 0) + 1; });
+  if (members.length) {
+    out.push('- 숙련도 등급: ' + PROFICIENCY_GRADES.map((g) => `${g.label} ${gradeTally[g.tier] || 0}명`).join(' · ')
+      + (gradeTally.none ? ` · 미입력 ${gradeTally.none}명` : ''));
+  }
   out.push('');
   out.push('## 직업별 목표');
   (state.tribes.roles || []).forEach((r) => {
@@ -161,15 +168,16 @@ export function buildTribes(state) {
     out.push('- 등록된 부족원이 없습니다.');
     return out.join('\n');
   }
-  out.push('| 이름 | 직업 | 숙련도 | 긍정 특성 | 부정 특성 | 담당 | 교체 |');
-  out.push('| --- | --- | --- | --- | --- | --- | --- |');
+  out.push('| 이름 | 직업 | 현재/최대 숙련도 | 등급 | 긍정 특성 | 부정 특성 | 담당 | 교체 |');
+  out.push('| --- | --- | --- | --- | --- | --- | --- | --- |');
   members.forEach((m) => {
-    out.push(`| ${m.name} | ${m.role} | ${m.skill || '-'}${m.skillMax ? '/' + m.skillMax : ''} | ${m.goodTraits || '-'} | ${m.badTraits || '-'} | ${m.facility || m.duty || '-'} | ${m.replaceNeeded ? '필요' : '-'} |`);
+    const grade = getMemberGrade(m).label;
+    out.push(`| ${m.name} | ${m.role} | ${m.skill || '-'}${m.skillMax ? '/' + m.skillMax : ''} | ${grade} | ${m.goodTraits || '-'} | ${m.badTraits || '-'} | ${m.facility || m.duty || '-'} | ${needsReplacement(m) ? '필요' : '-'} |`);
   });
-  const replace = members.filter((m) => m.replaceNeeded);
+  const replace = members.filter((m) => needsReplacement(m));
   if (replace.length) {
     out.push('');
-    out.push(`교체 대상: ${replace.map((m) => m.name).join(', ')}`);
+    out.push(`교체 대상 ${replace.length}명: ${replace.map((m) => `${m.name}(${getMemberGrade(m).label})`).join(', ')}`);
   }
   return out.join('\n');
 }

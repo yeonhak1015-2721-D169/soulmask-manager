@@ -254,6 +254,55 @@ a { color: var(--gold); }
 .chip.life { color: #9fe3d6; border-color: rgba(79, 179, 161, .45); background: rgba(79, 179, 161, .12); }
 .chip.combat { color: #ffb3b3; border-color: rgba(207, 92, 92, .45); background: rgba(207, 92, 92, .13); }
 .chip.spare { color: #c3c9d6; border-color: rgba(139, 147, 167, .45); background: rgba(139, 147, 167, .13); }
+
+/* ---------- 숙련도 등급 (최대 숙련도 자동 판정) ---------- */
+.grade-red { --grade-color: #ffb8b5; --grade-line: rgba(217, 83, 79, .55); --grade-bg: rgba(217, 83, 79, .14); --grade-solid: #d9534f; }
+.grade-orange { --grade-color: #ffd2a6; --grade-line: rgba(230, 126, 34, .55); --grade-bg: rgba(230, 126, 34, .14); --grade-solid: #e67e22; }
+.grade-yellow { --grade-color: #ffe58a; --grade-line: rgba(234, 179, 8, .52); --grade-bg: rgba(234, 179, 8, .12); --grade-solid: #eab308; }
+.grade-green { --grade-color: #b7ecc9; --grade-line: rgba(76, 175, 117, .52); --grade-bg: rgba(76, 175, 117, .14); --grade-solid: #4caf75; }
+.grade-none { --grade-color: var(--muted); --grade-line: rgba(139, 147, 167, .35); --grade-bg: rgba(139, 147, 167, .11); --grade-solid: #8b93a7; }
+
+.grade-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 1px 8px; border-radius: 999px; border: 1px solid var(--grade-line);
+  background: var(--grade-bg); color: var(--grade-color);
+  font-size: 11px; font-weight: 800; line-height: 1.6; white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.grade-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; margin: 2px 0 8px; }
+.grade-cell {
+  display: flex; flex-direction: column; align-items: flex-start; gap: 1px;
+  min-height: 56px; padding: 7px 7px; border-radius: 10px;
+  border: 1px solid var(--grade-line); background: var(--grade-bg); color: var(--grade-color);
+  cursor: pointer; text-align: left; font: inherit;
+}
+.grade-cell .g-count { font-size: 17px; font-weight: 800; line-height: 1.1; color: var(--text); font-variant-numeric: tabular-nums; }
+.grade-cell .g-label { font-size: 11px; font-weight: 800; white-space: nowrap; }
+.grade-cell .g-range { font-size: 10px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.grade-cell.on { border-color: var(--grade-solid); box-shadow: inset 0 0 0 2px var(--grade-line); }
+.grade-cell:active { transform: translateY(1px); }
+
+.grade-strip { display: flex; flex-wrap: wrap; gap: 6px; }
+.grade-count {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; border-radius: 999px; border: 1px solid var(--grade-line);
+  background: var(--grade-bg); color: var(--grade-color); font-size: 11.5px; font-weight: 700;
+}
+.grade-count b { font-size: 13px; color: var(--text); font-variant-numeric: tabular-nums; }
+
+.grade-preview {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+  margin: 8px 0 2px; padding: 9px 11px; border-radius: 10px;
+  border: 1px dashed var(--line); border-left: 3px solid var(--line); background: #14110e;
+}
+.grade-preview .gp-title { font-size: 11px; font-weight: 800; color: var(--muted); }
+.grade-preview .gp-note { font-size: 11.5px; color: var(--muted); }
+.grade-preview-must { border-left-color: #d9534f; }
+.grade-preview-need { border-left-color: #e67e22; }
+.grade-preview-review { border-left-color: #eab308; }
+.grade-preview-done { border-left-color: #4caf75; }
+
 .prio-high { color: #ffb8b5; }
 .prio-mid { color: #f0c68b; }
 .prio-low { color: var(--muted); }
@@ -414,6 +463,10 @@ a { color: var(--gold); }
 .role-bar-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; }
 .role-bar-head .nm { display: flex; align-items: center; gap: 7px; font-weight: 700; }
 .role-target-edit { width: 50px; min-height: 34px; text-align: center; background: #14110e; border: 1px solid var(--line); border-radius: 8px; color: var(--text); font-weight: 700; padding: 2px; }.member-card { border: 1px solid var(--line-soft); border-radius: 12px; background: var(--surface-2); padding: 11px 12px; }
+.member-card.member-grade-must { border-left: 3px solid rgba(217, 83, 79, .8); }
+.member-card.member-grade-need { border-left: 3px solid rgba(230, 126, 34, .8); }
+.member-card.member-grade-review { border-left: 3px solid rgba(234, 179, 8, .75); }
+.member-card.member-grade-done { border-left: 3px solid rgba(76, 175, 117, .75); }
 .member-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 8px; }
 .member-name { font-size: 14.5px; font-weight: 800; display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
 .member-meta { margin-top: 5px; display: flex; flex-wrap: wrap; gap: 4px 10px; font-size: 11.5px; color: var(--muted); }

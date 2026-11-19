@@ -1,6 +1,10 @@
 /* 부족원 — 정원·직업 목표·명단 관리 */
 import { ROLE_TONES } from '../data.js';
-import { capacityEditorHTML, tribeStats, paintCapacity, setCapacity, members as recruitedMembers } from '../tribes-util.js';
+import {
+  capacityEditorHTML, tribeStats, paintCapacity, setCapacity, members as recruitedMembers,
+  PROFICIENCY_GRADES, NO_GRADE_LABEL, getProficiencyGrade, getMemberGrade, memberGradeBadge,
+  needsReplacement, gradeRank, proficiencyText, gradeCounts, replaceTargets, gradeBadge, memberProficiency
+} from '../tribes-util.js';
 import { buildTribes } from '../ai-io.js';
 import { progressBar, pct, esc, uid, copyText, clampNum, debounce } from '../util.js';
 import { field, textInput, textArea, selectInput, openModal, confirmAction, toast } from '../ui.js';
@@ -8,9 +12,19 @@ import { field, textInput, textArea, selectInput, openModal, confirmAction, toas
 const uiState = {
   query: '',
   role: '전체',
+  grade: '전체',
   sort: '직업순',
   onlyReplace: false
 };
+
+const GRADE_FILTERS = ['전체'].concat(PROFICIENCY_GRADES.map((g) => g.label), ['미입력']);
+
+function memberMatchesGrade(m, filter) {
+  if (filter === '전체') { return true; }
+  const g = getMemberGrade(m);
+  if (filter === '미입력') { return !g.hasValue; }
+  return g.label === filter;
+}
 
 const SORTS = ['직업순', '이름순', '숙련도순', '최대 숙련도순', '교체 필요 우선'];
 const GENDERS = ['남', '여', '미입력'];
@@ -26,7 +40,11 @@ function sortMembers(list) {
   if (uiState.sort === '이름순') { arr.sort((a, b) => a.name.localeCompare(b.name, 'ko')); }
   else if (uiState.sort === '숙련도순') { arr.sort((a, b) => Number(b.skill) - Number(a.skill)); }
   else if (uiState.sort === '최대 숙련도순') { arr.sort((a, b) => Number(b.skillMax) - Number(a.skillMax)); }
-  else if (uiState.sort === '교체 필요 우선') { arr.sort((a, b) => Number(b.replaceNeeded) - Number(a.replaceNeeded)); }
+  else if (uiState.sort === '교체 필요 우선') {
+    arr.sort((a, b) => (gradeRank(a) - gradeRank(b))
+      || (Number(needsReplacement(b)) - Number(needsReplacement(a)))
+      || String(a.name).localeCompare(String(b.name), 'ko'));
+  }
   else {
     const order = {};
     (state0 ? state0.tribes.roles : []).forEach((r, i) => { order[r.name] = i; });
@@ -48,13 +66,16 @@ const tribesmen = {
   render(ctx, state) {
     state0 = state;
     const st = tribeStats(state);
+    const gc = gradeCounts(state);
+    const replaceList = replaceTargets(state);
     const all = state.tribes.members;
     const query = uiState.query.trim().toLowerCase();
     let list = all.filter((m) => {
       if (uiState.role !== '전체' && m.role !== uiState.role) { return false; }
-      if (uiState.onlyReplace && !m.replaceNeeded) { return false; }
+      if (!memberMatchesGrade(m, uiState.grade)) { return false; }
+      if (uiState.onlyReplace && !needsReplacement(m)) { return false; }
       if (!query) { return true; }
-      return [m.name, m.goodTraits, m.badTraits, m.skill, m.skillMax, m.facility, m.duty, m.note, m.combatSkill]
+      return [m.name, m.goodTraits, m.badTraits, m.skill, m.skillMax, m.facility, m.duty, m.note, m.combatSkill, m.role, getMemberGrade(m).label]
         .join(' ').toLowerCase().includes(query);
     });
     list = sortMembers(list);
@@ -66,6 +87,34 @@ const tribesmen = {
         <button type="button" class="btn small primary" data-act="add-member">+ 부족원 등록</button>
         <button type="button" class="btn small" data-act="copy-tribes">AI 복사</button>
       </div>
+    </div>
+
+    <div class="card" data-grade-summary>
+      <div class="card-head">
+        <div class="card-title-row"><h2>숙련도 등급</h2><span class="sub">최대 숙련도 자동 판정</span></div>
+        ${gc.replace
+          ? `<span class="chip red" data-replace-count>교체 대상 ${gc.replace}명</span>`
+          : `<span class="chip green" data-replace-count>교체 대상 없음</span>`}
+      </div>
+      <div class="grade-grid">
+        ${PROFICIENCY_GRADES.map((g) => `
+          <button type="button" class="grade-cell ${g.colorClass}${uiState.grade === g.label ? ' on' : ''}"
+                  data-act="filter-grade" data-grade="${esc(g.label)}" aria-pressed="${uiState.grade === g.label}"
+                  aria-label="${esc(g.label)} ${gc[g.tier] || 0}명만 보기">
+            <span class="g-count">${gc[g.tier] || 0}</span>
+            <span class="g-label">${esc(g.label)}</span>
+            <span class="g-range">${esc(g.range)}</span>
+          </button>`).join('')}
+        <button type="button" class="grade-cell grade-none${uiState.grade === '미입력' ? ' on' : ''}"
+                data-act="filter-grade" data-grade="미입력" aria-pressed="${uiState.grade === '미입력'}"
+                aria-label="숙련도 미입력 ${gc.none}명만 보기">
+          <span class="g-count">${gc.none}</span>
+          <span class="g-label">미입력</span>
+          <span class="g-range">등급 없음</span>
+        </button>
+      </div>
+      <p class="hint">최대 숙련도 기준 — 100 이하 <b>교체필수</b> · 101~110 <b>교체필요</b> · 111~119 <b>교체검토</b> · 120 이상 <b>영입완료</b>. 칸을 누르면 그 등급만 보입니다.</p>
+      ${replaceList.length ? `<p class="hint" data-replace-list>교체 우선: ${replaceList.slice(0, 5).map((m) => `${esc(m.name)}(${esc(getMemberGrade(m).label)} ${esc(proficiencyText(m))})`).join(' · ')}${replaceList.length > 5 ? ` 외 ${replaceList.length - 5}명` : ''}</p>` : ''}
     </div>
 
     <div class="card">
@@ -115,10 +164,13 @@ const tribesmen = {
         <option value="전체">전체 직업</option>
         ${state.tribes.roles.map((r) => `<option value="${esc(r.name)}"${uiState.role === r.name ? ' selected' : ''}>${esc(r.name)}</option>`).join('')}
       </select>
+      <select class="search-input" style="width:auto" data-field="grade-filter" aria-label="숙련도 등급 필터">
+        ${GRADE_FILTERS.map((g) => `<option value="${esc(g)}"${uiState.grade === g ? ' selected' : ''}>${g === '전체' ? '전체 등급' : g === '미입력' ? NO_GRADE_LABEL : g}</option>`).join('')}
+      </select>
       <select class="search-input" style="width:auto" data-field="sort" aria-label="정렬">
         ${SORTS.map((s) => `<option value="${esc(s)}"${uiState.sort === s ? ' selected' : ''}>${esc(s)}</option>`).join('')}
       </select>
-      <label class="check-row" style="min-height:40px"><input type="checkbox" data-field="only-replace" ${uiState.onlyReplace ? 'checked' : ''}><span>교체 대상만</span></label>
+      <label class="check-row" style="min-height:40px"><input type="checkbox" data-field="only-replace" ${uiState.onlyReplace ? 'checked' : ''}><span>교체 대상만 (자동 포함)</span></label>
     </div>
 
     <div class="list" id="member-list">
@@ -127,7 +179,7 @@ const tribesmen = {
         <p class="empty-sub">+ 부족원 등록으로 이름·직업·숙련도·특성을 기록하면 정원 대비 영입률이 채워집니다.</p>
       </div>`}
     </div>
-    <p class="hint">정원 ${st.capacity}명 중 ${st.current}명 등록 · 교체 대상 ${st.replaceCount}명 · 영입 여부를 끄면 명단에는 남지만 집계에서 빠집니다.</p>`;
+    <p class="hint">정원 ${st.capacity}명 중 ${st.current}명 등록 · 교체 대상 ${st.replaceCount}명(자동 등급 포함) · 영입 여부를 끄면 명단에는 남지만 집계에서 빠집니다.</p>`;
   },
 
   actions: {
@@ -175,6 +227,11 @@ const tribesmen = {
       const r = ctx.state.tribes.roles.find((x) => x.id === el.getAttribute('data-id'));
       if (r) { editRole(r, ctx); }
     },
+    'filter-grade'(el, ctx) {
+      const g = el.getAttribute('data-grade') || '전체';
+      uiState.grade = uiState.grade === g ? '전체' : g;
+      ctx.render();
+    },
     'delete-role'(el, ctx) {
       const r = ctx.state.tribes.roles.find((x) => x.id === el.getAttribute('data-id'));
       if (!r) { return; }
@@ -209,6 +266,7 @@ const tribesmen = {
       ctx.commit();
     },
     'role-filter'(el, ctx) { uiState.role = el.value; ctx.render(); },
+    'grade-filter'(el, ctx) { uiState.grade = el.value; ctx.render(); },
     sort(el, ctx) { uiState.sort = el.value; ctx.render(); },
     'only-replace'(el, ctx) { uiState.onlyReplace = el.checked; ctx.render(); }
   },
@@ -236,18 +294,21 @@ const saveSoon = debounce((ctx) => { ctx.save({ silent: true }); }, 400);
 
 function memberCard(m, state) {
   const tone = (state.tribes.roles.find((r) => r.name === m.role) || { tone: 'spare' }).tone;
-  const search = [m.name, m.goodTraits, m.badTraits, m.skill, m.skillMax, m.facility, m.duty, m.note, m.combatSkill, m.role].join(' ').toLowerCase();
-  return `<div class="member-card" data-member-card data-search="${esc(search)}">
+  const g = getMemberGrade(m);
+  const prof = proficiencyText(m);
+  const search = [m.name, m.goodTraits, m.badTraits, m.skill, m.skillMax, m.facility, m.duty, m.note, m.combatSkill, m.role, g.label].join(' ').toLowerCase();
+  return `<div class="member-card member-grade-${esc(g.tier)}" data-member-card data-grade="${esc(g.label)}" data-search="${esc(search)}">
     <div class="member-top">
       <div class="grow">
         <div class="member-name">${esc(m.name)}
           <span class="chip ${esc(tone)}">${esc(m.role)}</span>
+          ${memberGradeBadge(m)}
           ${m.recruited ? '' : '<span class="chip red">미영입</span>'}
-          ${m.replaceNeeded ? '<span class="chip gold">교체 대상</span>' : ''}
+          ${m.replaceNeeded ? '<span class="chip gold">수동 교체 표시</span>' : ''}
         </div>
         <div class="member-meta">
           <span>성별 <b>${esc(m.gender)}</b></span>
-          <span>숙련도 <b>${esc(m.skill || '-')}${m.skillMax ? ' / ' + esc(m.skillMax) : ''}</b></span>
+          <span>현재/최대 숙련도 <b data-prof-text>${esc(prof)}</b></span>
           ${m.facility ? `<span>담당 시설 <b>${esc(m.facility)}</b></span>` : ''}
           ${m.duty ? `<span>담당 업무 <b>${esc(m.duty)}</b></span>` : ''}
         </div>
@@ -268,6 +329,15 @@ function memberCard(m, state) {
   </div>`;
 }
 
+function memberProficiencyValue(m) {
+  return memberProficiency(m);
+}
+
+function gradeNote(g) {
+  if (!g || !g.hasValue) { return '최대 숙련도를 입력하면 등급이 자동으로 표시됩니다.'; }
+  return `최대 숙련도 ${g.value} → ${g.label} (${g.range})`;
+}
+
 function editMember(member, ctx) {
   const isNew = !member;
   const roles = ctx.state.tribes.roles;
@@ -286,9 +356,15 @@ function editMember(member, ctx) {
       </div>
       <div class="field-row three">
         <div class="field"><label for="mb-gender">성별</label>${selectInput('mb-gender', GENDERS, m.gender)}</div>
-        <div class="field"><label for="mb-skill">현재 숙련도</label><input id="mb-skill" type="text" value="${esc(m.skill)}" placeholder="예: 62"></div>
-        <div class="field"><label for="mb-skillmax">최대 숙련도</label><input id="mb-skillmax" type="text" value="${esc(m.skillMax)}" placeholder="예: 85"></div>
+        <div class="field"><label for="mb-skill">현재 숙련도</label><input id="mb-skill" type="text" inputmode="numeric" value="${esc(m.skill)}" placeholder="예: 100"></div>
+        <div class="field"><label for="mb-skillmax">직업 최고 숙련도(최대 숙련도)</label><input id="mb-skillmax" type="text" inputmode="numeric" value="${esc(memberProficiencyValue(m))}" placeholder="예: 103"></div>
       </div>
+      <div class="grade-preview" data-grade-preview>
+        <span class="gp-title">자동 등급</span>
+        <span class="gp-badge">${gradeBadge(getProficiencyGrade(memberProficiencyValue(m)))}</span>
+        <span class="gp-note">${esc(gradeNote(getProficiencyGrade(memberProficiencyValue(m))))}</span>
+      </div>
+      <p class="hint">등급 기준 — 100 이하 교체필수 · 101~110 교체필요 · 111~119 교체검토 · 120 이상 영입완료. 비워 두면 등급을 매기지 않습니다.</p>
       ${field('긍정 특성', textInput('mb-good', m.goodTraits, 'placeholder="예: 손재주, 야간 작업"'), '쉼표로 구분해도 됩니다.')}
       ${field('부정 특성', textInput('mb-bad', m.badTraits, 'placeholder="예: 겁이 많음"'))}
       <div class="field-row">
@@ -327,6 +403,24 @@ function editMember(member, ctx) {
       ctx.commit(isNew ? '부족원을 등록했습니다' : '수정했습니다');
     }
   });
+
+  /* 최대 숙련도를 입력하는 동안 등급 배지를 즉시 미리 보기 */
+  const form = document.getElementById('modal-form');
+  const maxInput = form && form.querySelector('#mb-skillmax');
+  const preview = form && form.querySelector('[data-grade-preview]');
+  if (maxInput && preview) {
+    const paint = () => {
+      const g = getProficiencyGrade(maxInput.value);
+      const badge = preview.querySelector('.gp-badge');
+      const note = preview.querySelector('.gp-note');
+      if (badge) { badge.innerHTML = gradeBadge(g); }
+      if (note) { note.textContent = gradeNote(g); }
+      preview.className = 'grade-preview grade-preview-' + g.tier;
+    };
+    maxInput.addEventListener('input', paint);
+    maxInput.addEventListener('change', paint);
+    paint();
+  }
 }
 
 function editRole(role, ctx) {

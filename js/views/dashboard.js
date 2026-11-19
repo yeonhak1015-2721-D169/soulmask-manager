@@ -1,6 +1,6 @@
 /* 대시보드 — 오늘의 현황 한눈에 보기 */
 import { store } from '../store.js';
-import { capacityEditorHTML, tribeStats, paintCapacity, setCapacity } from '../tribes-util.js';
+import { capacityEditorHTML, tribeStats, paintCapacity, setCapacity, PROFICIENCY_GRADES, gradeCounts, replaceTargets, getMemberGrade, proficiencyText } from '../tribes-util.js';
 import { overallProgress, buildStatus } from '../ai-io.js';
 import { progressBar, pct, esc, todayKey, dateLabel, debounce, copyText, clampNum } from '../util.js';
 import { field, textInput, selectInput, openModal, toast } from '../ui.js';
@@ -20,6 +20,8 @@ const dashboard = {
     const todays = state.todos.filter((t) => t.date === today).sort((a, b) => a.order - b.order);
     const done = todays.filter((t) => t.done).length;
     const st = tribeStats(state);
+    const gc = gradeCounts(state);
+    const replaceList = replaceTargets(state);
     const overall = overallProgress(state);
     const doing = state.roadmap.filter((s) => s.status === '진행 중');
     const nextSteps = state.roadmap.filter((s) => s.status !== '완료').slice(0, 3);
@@ -71,6 +73,15 @@ const dashboard = {
           ${r.short ? `<span class="warn-dot" title="${r.short}명 부족"></span>` : ''}
         </span>`).join('')}
       </div>
+      <div class="grade-strip mt12" data-dash-grades>
+        ${PROFICIENCY_GRADES.map((g) => `<span class="grade-count ${g.colorClass}" title="최대 숙련도 ${esc(g.range)} → ${esc(g.label)}">
+          <b>${gc[g.tier] || 0}</b><span>${esc(g.label)}</span>
+        </span>`).join('')}
+        ${gc.none ? `<span class="grade-count grade-none" title="최대 숙련도 미입력"><b>${gc.none}</b><span>미입력</span></span>` : ''}
+      </div>
+      ${replaceList.length
+        ? `<p class="hint" data-dash-replace>교체 우선 ${replaceList.length}명 — ${replaceList.slice(0, 4).map((m) => `${esc(m.name)} ${esc(getMemberGrade(m).label)}(${esc(proficiencyText(m))})`).join(' · ')}${replaceList.length > 4 ? ' 외' : ''}</p>`
+        : `<p class="hint" data-dash-replace>교체가 필요한 부족원은 없습니다. 최대 숙련도를 입력하면 등급이 자동으로 표시됩니다.</p>`}
     </div>
 
     <div class="card">

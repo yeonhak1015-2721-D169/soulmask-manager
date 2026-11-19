@@ -70,7 +70,7 @@ function normMember(m, roles) {
     gender: ['남', '여', '미입력'].includes(m && m.gender) ? m.gender : '미입력',
     recruited: m ? m.recruited !== false : true,
     skill: str(m && m.skill, 40),
-    skillMax: str(m && m.skillMax, 40),
+    skillMax: str(m && (m.skillMax !== undefined && m.skillMax !== null && String(m.skillMax).trim() !== '' ? m.skillMax : m.maxProficiency), 40),
     goodTraits: str(m && m.goodTraits, 300),
     badTraits: str(m && m.badTraits, 300),
     combatSkill: str(m && m.combatSkill, 200),
