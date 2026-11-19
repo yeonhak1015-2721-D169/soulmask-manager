@@ -537,6 +537,11 @@ input::placeholder,textarea::placeholder{color:#6d6355}
   .title-block h1{font-size:22px}
   #recruit-list,#worker-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;align-items:start}
 }
+@media (max-width:430px){
+  .header-actions{gap:6px}
+  .sync-chip{padding:0 10px}
+  .sync-chip #sync-chip-text{display:none}
+}
 @media (prefers-reduced-motion:reduce){
   *{animation:none !important;transition:none !important}
 }
