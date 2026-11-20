@@ -115,7 +115,7 @@ async function api(method, path, token, body) {
   try {
     res = await fetch(API + path, opts);
   } catch (e) {
-    throw new Error('인터넷 연결을 확인해 주세요 (GitHub에 연결하지 못했습니다).');
+    throw new Error('인터넷 연결을 확인해 주세요 (GitHub에 연결하지 못했습니다)' + (e && e.message ? ' — ' + e.message : ''));
   }
   const text = await res.text();
   let json = null;

@@ -78,17 +78,21 @@ const settings = {
       </div>
       <div class="btn-row mt12">
         <button type="button" class="btn small" data-act="export-md">Markdown 내보내기</button>
-        <button type="button" class="btn small" data-act="export-json">JSON 백업 내려받기</button>
       </div>
     </div>
 
     <div class="card">
       <div class="card-head"><h2>💾 백업 / 복원</h2></div>
-      <p class="lead">JSON 백업 파일을 불러오면 지금 내용을 덮어씁니다. 가져오기 전에 현재 내용을 먼저 내려받아 두세요.</p>
+      <p class="lead">내려받기로 지금 내용을 파일로 보관하고, 백업 파일을 불러오면 지금 내용을 덮어씁니다. 가져오기 전에 현재 내용을 먼저 내려받아 두세요.</p>
       <div class="btn-row">
+        <button type="button" class="btn primary" data-act="export-json">JSON 백업 내려받기</button>
+        <button type="button" class="btn" data-act="copy-json">JSON 백업 복사</button>
+      </div>
+      <div class="btn-row mt12">
         <button type="button" class="btn" data-act="import-file">백업 파일 선택</button>
         <button type="button" class="btn" data-act="import-paste">JSON 붙여넣기</button>
       </div>
+      <p class="hint">내려받기는 파일로, 복사는 클립보드로 JSON 전체를 담습니다 (핸드폰 메모·메신저에 붙여넣어 보관).</p>
       <div class="data-counts">
         <span class="chip">할 일 ${counts.todos}</span>
         <span class="chip">부족원 ${counts.members}</span>
@@ -145,6 +149,10 @@ const settings = {
     'export-json'(el, ctx) {
       const ok = downloadText(`soulmask-planner-backup-${todayKey()}.json`, exportJSON(ctx.state), 'application/json');
       toast(ok ? 'JSON 백업을 내려받았습니다' : '내보내지 못했습니다', !ok);
+    },
+    async 'copy-json'(el, ctx) {
+      const ok = await copyText(exportJSON(ctx.state));
+      toast(ok ? 'JSON 백업을 복사했습니다 (붙여넣어 보관하세요)' : '복사하지 못했습니다', !ok);
     },
     'import-file'(el, ctx) {
       const input = document.querySelector('#import-file');
