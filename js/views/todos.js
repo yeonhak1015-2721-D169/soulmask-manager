@@ -50,19 +50,21 @@ const todos = {
 
     return `
     <div class="card tight">
-      <div class="flex between wrap">
-        <div class="flex">
+      <div class="date-nav">
+        <div class="date-nav-main">
           <button type="button" class="icon-btn" data-act="date-prev" aria-label="이전 날짜">‹</button>
-          <div>
-            <div style="font-size:14px;font-weight:800">${esc(dateLabel(date))}</div>
+          <div class="date-nav-label">
+            <div class="date-nav-title">${esc(dateLabel(date))}</div>
             <div class="tiny muted">${isToday ? '오늘' : '지난/예정 기록'} · ${all.length}개 항목</div>
           </div>
           <button type="button" class="icon-btn" data-act="date-next" aria-label="다음 날짜">›</button>
-          <input type="date" class="search-input" style="width:auto;min-width:140px" value="${esc(date)}" data-field="date" aria-label="날짜 선택">
         </div>
-        <div class="btn-row">
-          ${isToday ? '' : '<button type="button" class="btn small" data-act="date-today">오늘</button>'}
-          <button type="button" class="btn small primary" data-act="add-todo">+ 할 일</button>
+        <div class="date-nav-actions">
+          <input type="date" class="search-input" value="${esc(date)}" data-field="date" aria-label="날짜 선택">
+          <div class="btn-row">
+            ${isToday ? '' : '<button type="button" class="btn small" data-act="date-today">오늘</button>'}
+            <button type="button" class="btn small primary" data-act="add-todo">+ 할 일</button>
+          </div>
         </div>
       </div>
     </div>
@@ -90,7 +92,7 @@ const todos = {
         <option value="전체"${uiState.category === '전체' ? ' selected' : ''}>전체 카테고리</option>
         ${CATEGORIES.map((c) => `<option value="${esc(c)}"${uiState.category === c ? ' selected' : ''}>${esc(c)}</option>`).join('')}
       </select>
-      <span class="tiny muted">순서는 드래그 또는 ▲▼로 바꿀 수 있습니다</span>
+      <span class="tiny muted toolbar-hint">순서는 드래그 또는 ▲▼로 바꿀 수 있습니다</span>
     </div>
 
     <div class="list" id="todo-list" data-date="${esc(date)}">

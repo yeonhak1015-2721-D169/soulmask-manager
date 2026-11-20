@@ -4,7 +4,7 @@
    - 다른 출처(api.github.com 등)는 그대로 통과 */
 'use strict';
 
-var CACHE = 'soulmask-planner-v3';
+var CACHE = 'soulmask-planner-v4';
 var ASSETS = [
   './',
   './index.html',

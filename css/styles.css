@@ -445,6 +445,19 @@ a { color: var(--gold); }
 .check-btn.on { background: rgba(76, 175, 117, .18); border-color: var(--green); color: var(--green); }
 .drag-handle { cursor: grab; color: var(--muted-2); font-size: 16px; padding: 4px 0; user-select: none; }
 .empty { padding: 24px 14px; text-align: center; border: 1px dashed var(--line); border-radius: 12px; }
+
+/* 날짜 이동 줄 (할 일 상단) */
+.date-nav { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; justify-content: space-between; }
+.date-nav-main { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.date-nav-label { min-width: 0; }
+.date-nav-title { font-size: 14px; font-weight: 800; white-space: nowrap; }
+.date-nav-actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-left: auto; }
+.date-nav-actions .search-input { width: auto; min-width: 140px; }
+@media (max-width: 640px) {
+  .date-nav-actions { width: 100%; margin-left: 0; }
+  .date-nav-actions .search-input { flex: 1 1 140px; min-width: 0; }
+  .date-nav-actions .btn-row { margin-left: auto; }
+}
 .empty-main { font-size: 13.5px; font-weight: 700; color: var(--muted); }
 .empty-sub { margin-top: 4px; font-size: 12px; color: var(--muted-2); }
 
@@ -629,6 +642,31 @@ a { color: var(--gold); }
 }
 .sheet-link .si { font-size: 20px; }
 .sheet-link.active { border-color: rgba(212, 155, 84, .5); color: var(--gold); }
+
+/* ---------- 좁은 화면: 행 오른쪽 버튼이 제목·하위 항목을 밀지 않도록 ---------- */
+@media (max-width: 640px) {
+  /* 할 일·탐험 지역·시설 같은 목록 행: 본문은 카드 전체 폭, 버튼은 아래 줄 */
+  .row-item { flex-wrap: wrap; }
+  .row-item > .row-actions {
+    flex: 1 0 100%; justify-content: flex-end;
+    margin-top: 2px; padding-top: 8px; border-top: 1px solid var(--line-soft);
+  }
+  .row-item > .row-actions .btn.icon.small { min-width: 40px; min-height: 38px; }
+
+  /* 부족원 직업별 목표: 이름·인원은 한 줄 전체, 입력·버튼은 다음 줄 오른쪽 */
+  .role-bar-head { flex-wrap: wrap; row-gap: 6px; }
+  .role-bar-head .nm { flex: 1 1 100%; flex-wrap: wrap; row-gap: 4px; }
+  .role-bar-head > .flex { margin-left: auto; }
+
+  /* 유튜브 카드 하단: 날짜 문구가 먼저 줄을 차지하고 버튼은 아래로 */
+  .video-card .flex.between { flex-wrap: wrap; row-gap: 6px; }
+  .video-card .flex.between > .tiny { white-space: nowrap; }
+  .video-card .flex.between > .flex { margin-left: auto; }
+
+  /* 필터 셀렉트가 너무 좁게 눌리지 않도록 */
+  .toolbar select.search-input { flex: 1 1 118px; width: auto; min-width: 118px; }
+  .toolbar .toolbar-hint { flex: 1 1 100%; }
+}
 
 /* ---------- 토스트 ---------- */
 .toast {
