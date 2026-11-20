@@ -5,7 +5,7 @@
 */
 import {
   APP_ID, SCHEMA_VERSION, STORAGE_KEY, LEGACY_STORAGE_KEY, PENDING_KEY,
-  CATEGORIES, PRIORITIES, createInitialState, seedRoles, seedBases
+  CATEGORIES, PRIORITIES, createInitialState, seedRoles, seedBases, normalizeProfession
 } from './data.js';
 import { str, clampNum, todayKey, uid, num } from './util.js';
 
@@ -74,7 +74,8 @@ function normMember(m, roles) {
     goodTraits: str(m && m.goodTraits, 300),
     badTraits: str(m && m.badTraits, 300),
     combatSkill: str(m && m.combatSkill, 200),
-    profession: str(m && m.profession, 24),
+    /* 담당직업은 지금 숙련도 목록의 key 하나로 맞춥니다. 예전 이름/통칭으로 저장돼 있어도 살려 둡니다. */
+    profession: normalizeProfession(str(m && m.profession, 24)) || str(m && m.profession, 24),
     jobTitle: str(m && m.jobTitle, 40),
     facility: str(m && m.facility, 60),
     duty: str(m && m.duty, 120),

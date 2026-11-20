@@ -537,6 +537,23 @@ a { color: var(--gold); }
 .member-meta span b { color: var(--text); font-weight: 600; }
 .member-flags { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 7px; }
 
+/* ---------- 부족원 카드: 등급 색을 그대로 쓰는 진한 배지·영입 버튼 ----------
+   최대 숙련도 등급이 한눈에 보이도록 배지와 '영입 완료' 버튼을 같은 색으로 꽉 채웁니다.
+   미입력(등급 없음)은 배지·버튼 모두 기존의 차분한 금색/중립 톤을 그대로 씁니다. */
+.member-name .grade-badge { font-weight: 800; padding: 1px 9px; box-shadow: 0 1px 0 rgba(0, 0, 0, .28); }
+.member-name .grade-badge.grade-red { background: #d9534f; border-color: #e46b67; color: #fff; }
+.member-name .grade-badge.grade-orange { background: #e67e22; border-color: #f0913f; color: #1a1208; }
+.member-name .grade-badge.grade-yellow { background: #eab308; border-color: #f5c518; color: #14110e; }
+.member-name .grade-badge.grade-green { background: #4caf75; border-color: #63c48b; color: #11100e; }
+.member-name .grade-badge.grade-none { background: transparent; border-color: var(--grade-line); color: var(--grade-color); box-shadow: none; }
+
+.member-flags .btn.recruited-on { border-width: 1px; box-shadow: 0 1px 0 rgba(0, 0, 0, .28); }
+.member-flags .btn.recruited-on:hover { filter: brightness(1.07); }
+.member-flags .btn.recruited-on.grade-red { background: #d9534f; border-color: #e46b67; color: #fff; }
+.member-flags .btn.recruited-on.grade-orange { background: #e67e22; border-color: #f0913f; color: #1a1208; }
+.member-flags .btn.recruited-on.grade-yellow { background: #eab308; border-color: #f5c518; color: #14110e; }
+.member-flags .btn.recruited-on.grade-green { background: #4caf75; border-color: #63c48b; color: #11100e; }
+
 /* ---------- 로드맵 ---------- */
 .rm-step { position: relative; padding-left: 30px; }
 .rm-step::before {

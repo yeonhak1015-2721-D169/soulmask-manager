@@ -46,52 +46,45 @@ export const ROLE_TONES = {
 };
 
 /* ---------- 담당직업 = 소울마스크 숙련도(Proficiency) ----------
-   실제 게임의 숙련도 31종을 기준으로 정리했습니다.
-   출처: soulmaskguide.com/proficiency(1.0 전체 31종), soulmask.fandom.com/wiki/Proficiencies,
-        소울마스크 위키(한국어) — 기술명 '목공·방직·도축·무두질·재배·연마·공예술·도요' 표기 확인.
+   게임 화면(숙련도 창)에 실제로 나오는 이름만 그대로 씁니다.
+   - 생활 숙련도 14종: 벌목·채광·재배·수확·목석·도요·가죽 세공·방직·도예·대장장이·무기 제작·방어구 제작·연금·요리
+   - 전투 숙련도 9종: 칼·검·쌍칼·창·해머·건틀릿·활·방패·가시 채찍
+   화면에서는 하던 일에 따라 생산직(가공·제작 9) · 생활직(채집·음식·파견 6) · 전투직(9) · 예비/기타(2)로 묶어 보여 줍니다.
    key 는 저장용 고정 id라서 나중에 표시 이름을 고쳐도 저장된 부족원이 깨지지 않습니다.
-   alt 는 게임 표기와 함께 쓰이는 통칭(대장장이·가죽 세공·직물·농업·수확·사냥). */
+   aliases 는 검색·예전 기록을 받아 주는 다른 이름(통칭)입니다. */
+
 export const PROFICIENCY_GROUPS = [
   {
     id: 'prod',
     label: '생산직',
-    hint: '제작 · 가공',
+    hint: '가공 · 제작',
     tone: 'prod',
     role: '생산직',
     items: [
-      { key: 'craftsman', name: '공예술', alt: '대장장이', en: 'Craftsman', duty: '도구·부품·생활용품 제작 · 대장장이 작업대 계열' },
-      { key: 'weaponsmith', name: '무기 제작', en: 'Weaponsmithing', duty: '근접·원거리 무기와 화살 제작 · 품질 옵션' },
-      { key: 'armorsmith', name: '방어구 제작', en: 'Armoursmithing', duty: '갑옷·방패·장비 제작 · 내구도·품질 옵션' },
-      { key: 'kiln', name: '도요', en: 'Kiln', duty: '주괴 생산 · 숯·유리·석회·벽돌 가마 제련' },
-      { key: 'pottery', name: '도예', en: 'Pottery', duty: '항아리·그릇·화분·거푸집 등 점토 제품' },
-      { key: 'tanning', name: '무두질', alt: '가죽 세공', en: 'Tanning', duty: '생가죽 무두질 · 가죽·고급 가죽 생산' },
-      { key: 'spinning', name: '방직', alt: '직물', en: 'Spinning', duty: '실·천·리넨·밧줄 생산' },
-      { key: 'woodworking', name: '목공', en: 'Woodworking', duty: '판자·목재 가공 · 목공 작업대·가구·건축 자재' },
-      { key: 'alchemy', name: '연금술', en: 'Alchemy', duty: '약물·독·연금 혼합물·특수 재료 제작' },
-      { key: 'grinding', name: '연마', en: 'Grinding', duty: '분쇄기·연마 작업 · 가루·안료·분말 가공' },
-      { key: 'stonecutting', name: '석공', en: 'Stonecutting', duty: '석재 절단·가공 · 건축 블록' },
-      { key: 'construction', name: '건축', en: 'Construction', duty: '건물 건설·업그레이드 · 벽·바닥·지붕' },
-      { key: 'jewelcrafting', name: '보석 세공', en: 'Jewelcrafting', duty: '보석·장신구 제작 · 품질 옵션' },
-      { key: 'furniture', name: '가구 제작', en: 'Furniture-making', duty: '가구·장식 제작 · 품질 옵션' }
+      { key: 'woodstone', name: '목석', en: 'Wood & Stone', aliases: ['목공', '석공', '목재', '석재'], duty: '목재 및 석재 가공 · 판자·석재 블록·가구·건축 자재' },
+      { key: 'kiln', name: '도요', en: 'Kiln', aliases: ['제련'], duty: '금속 제련 · 주괴 생산 · 숯·유리·석회 가마' },
+      { key: 'tanning', name: '가죽 세공', en: 'Tanning', aliases: ['무두질'], duty: '가죽 가공 · 생가죽 무두질 · 가죽·고급 가죽 생산' },
+      { key: 'spinning', name: '방직', en: 'Spinning', aliases: ['직물'], duty: '실, 직물 제작 · 천·리넨·밧줄 생산' },
+      { key: 'pottery', name: '도예', en: 'Pottery', duty: '도자기 제작 · 항아리·그릇·화분·거푸집' },
+      { key: 'craftsman', name: '대장장이', en: 'Craftsman', aliases: ['공예술'], duty: '도구 제작 · 대장장이 작업대 계열' },
+      { key: 'weaponsmith', name: '무기 제작', en: 'Weaponsmithing', duty: '무기 제작 · 근접·원거리 무기와 화살' },
+      { key: 'armorsmith', name: '방어구 제작', en: 'Armoursmithing', duty: '방어구 제작 · 갑옷·방패·장비' },
+      { key: 'alchemy', name: '연금', en: 'Alchemy', aliases: ['연금술'], duty: '약품 제작 · 약물·독·연금 혼합물' }
     ]
   },
   {
     id: 'life',
     label: '생활직',
-    hint: '채집 · 거점 운영',
+    hint: '채집 · 음식 · 파견',
     tone: 'life',
     role: '생활직',
     items: [
-      { key: 'cooking', name: '요리', en: 'Cooking', duty: '음식·음료·간식 조리 · 부족원 식량' },
-      { key: 'farming', name: '재배', alt: '농업', en: 'Farming', duty: '씨앗 파종·작물 재배 · 비료·관개 관리' },
-      { key: 'mining', name: '채광', en: 'Mining', duty: '광석·석재·수정 채굴' },
-      { key: 'logging', name: '벌목', en: 'Logging', duty: '목재·나무껍질·수지 벌채' },
-      { key: 'harvesting', name: '채집', alt: '수확', en: 'Harvesting', duty: '야생 식물·섬유·열매·약초 채집' },
-      { key: 'slaughtering', name: '도축', alt: '사냥', en: 'Slaughtering', duty: '야생 사냥·도살 · 가죽·고기·뼈 확보' },
-      { key: 'expedition', name: '원정 사냥', alt: '사냥터 파견', en: 'Expedition hunting', noProf: true, duty: '원정 동물 사냥 · 생가죽/고기/뼈/힘줄 자동 수급 (별도 제작 숙련도 없음 · 전투/기동력 위주)' },
-      { key: 'butchering', name: '분해', en: 'Butchering', duty: '도축한 고기 손질·부위 분해' },
-      { key: 'husbandry', name: '사육', alt: '축산', en: 'Animal husbandry', duty: '동물 사육·사료·번식 · 알·털·배설물' },
-      { key: 'capturing', name: '포획', en: 'Capturing', duty: '야생 동물 포획·우리 관리' }
+      { key: 'logging', name: '벌목', en: 'Logging', duty: '나무 채집 · 목재·나무껍질·수지 벌채' },
+      { key: 'mining', name: '채광', en: 'Mining', duty: '광물 채집 · 광석·석재·수정 채굴' },
+      { key: 'farming', name: '재배', en: 'Farming', aliases: ['농업'], duty: '농사 · 씨앗 파종·작물 재배·비료' },
+      { key: 'harvesting', name: '수확', en: 'Harvesting', aliases: ['채집'], duty: '식물 및 야생 자원 채집 · 섬유·열매·약초' },
+      { key: 'cooking', name: '요리', en: 'Cooking', duty: '음식 제작 · 요리·음료·부족원 식량' },
+      { key: 'expedition', name: '원정 사냥', en: 'Expedition hunting', aliases: ['사냥터 파견', '도축', '사냥'], noProf: true, duty: '원정 동물 사냥 · 생가죽/고기/뼈/힘줄 자동 수급 · 별도 숙련도 없음' }
     ]
   },
   {
@@ -101,15 +94,15 @@ export const PROFICIENCY_GROUPS = [
     tone: 'combat',
     role: '전투직',
     items: [
-      { key: 'blade', name: '검', en: 'Blade', duty: '한손검 전투 · 보스전·거점 경비' },
-      { key: 'dualblade', name: '쌍검', en: 'Dual Blades', duty: '쌍검 속공 · 보스전·추격' },
+      { key: 'blade', name: '칼', en: 'Blade', aliases: ['한손검'], duty: '한손 칼 전투 · 보스전·거점 경비' },
+      { key: 'greatsword', name: '검', en: 'Great Sword', aliases: ['대검'], duty: '대검 강공격 · 보스전' },
+      { key: 'dualblade', name: '쌍칼', en: 'Dual-blade', aliases: ['쌍검'], duty: '쌍칼 속공 · 보스전·추격' },
       { key: 'spear', name: '창', en: 'Spear', duty: '창 견제·관통 · 거점 방어' },
-      { key: 'greatsword', name: '대검', en: 'Greatsword', duty: '대검 광역 강공격 · 보스전' },
-      { key: 'hammer', name: '망치', alt: '해머', en: 'Hammer', duty: '둔기 전투 · 슈퍼아머·보스전' },
+      { key: 'hammer', name: '해머', en: 'Hammer', aliases: ['망치'], duty: '둔기 전투 · 슈퍼아머·보스전' },
       { key: 'gauntlets', name: '건틀릿', en: 'Gauntlets', duty: '건틀릿 근접 연타 · 보스전' },
       { key: 'bow', name: '활', en: 'Bow', duty: '활 원거리 사냥·보스전' },
       { key: 'shield', name: '방패', en: 'Shield', duty: '방패 방어·탱커 · 피해 감소' },
-      { key: 'whip', name: '채찍', en: 'Spiked Whip', duty: '채찍 사거리 견제 · 다수 상대' }
+      { key: 'whip', name: '가시 채찍', en: 'Spiked Whip', aliases: ['채찍'], duty: '가시 채찍 사거리 견제 · 다수 상대' }
     ]
   },
   {
@@ -119,7 +112,7 @@ export const PROFICIENCY_GROUPS = [
     tone: 'spare',
     role: '예비',
     items: [
-      { key: 'utility', name: '다용도 · 예비', en: 'Utility', duty: '정해진 자리 없이 빈 작업 지원 · 교체 대기' },
+      { key: 'utility', name: '다용도 / 예비', en: 'Utility', duty: '정해진 자리 없이 빈 작업 지원 · 교체 대기' },
       { key: 'custom', name: '직접 입력', en: 'Custom', duty: '', custom: true }
     ]
   }
@@ -130,16 +123,93 @@ export const PROFICIENCIES = PROFICIENCY_GROUPS.reduce((acc, g) => acc.concat(
   g.items.map((it) => Object.assign({}, it, { group: g.id, groupLabel: g.label, groupHint: g.hint, tone: g.tone, role: g.role }))
 ), []);
 
-/** key → 숙련도 항목 (없으면 null) */
-export function findProfession(key) {
-  if (!key) { return null; }
-  return PROFICIENCIES.find((p) => p.key === key) || null;
+/* ---------- 예전 기록 받아 주기 ----------
+   목록을 게임 표기 26종으로 줄이기 전에 쓰던 값들. 저장된 부족원이 깨지지 않도록
+   같은 뜻이면 지금 항목으로, 딱 맞는 항목이 없으면 '예전 기록'으로 이름 그대로 보여 줍니다. */
+export const PROFICIENCY_ALIASES = {
+  /* 예전 key → 지금 key */
+  woodworking: 'woodstone',
+  stonecutting: 'woodstone',
+  slaughtering: 'expedition',
+  /* 예전 화면에 보이던 이름 → 지금 key (이름을 그대로 저장해 둔 값도 받아 줍니다) */
+  '목공': 'woodstone',
+  '석공': 'woodstone',
+  '무두질': 'tanning',
+  '직물': 'spinning',
+  '공예술': 'craftsman',
+  '연금술': 'alchemy',
+  '농업': 'farming',
+  '채집': 'harvesting',
+  '도축': 'expedition',
+  '사냥': 'expedition',
+  '사냥터 파견': 'expedition',
+  '한손검': 'blade',
+  '대검': 'greatsword',
+  '쌍검': 'dualblade',
+  '망치': 'hammer',
+  '채찍': 'whip',
+  '다용도': 'utility',
+  '예비': 'utility',
+  '다용도 · 예비': 'utility',
+  '직접 입력': 'custom'
+};
+
+/* 지금 숙련도 목록에는 없지만 저장된 기록을 그대로 보여 주기 위한 항목 */
+export const LEGACY_PROFICIENCIES = {
+  construction: { key: 'construction', name: '건축', en: 'Construction', legacy: true, groupLabel: '예전 기록', tone: 'spare', role: '생산직', duty: '건물 건설·업그레이드 · 벽·바닥·지붕' },
+  grinding: { key: 'grinding', name: '연마', en: 'Grinding', legacy: true, groupLabel: '예전 기록', tone: 'spare', role: '생산직', duty: '분쇄기·연마 작업 · 가루·안료·분말 가공' },
+  jewelcrafting: { key: 'jewelcrafting', name: '보석 세공', en: 'Jewelcrafting', legacy: true, groupLabel: '예전 기록', tone: 'spare', role: '생산직', duty: '보석·장신구 제작 · 품질 옵션' },
+  furniture: { key: 'furniture', name: '가구 제작', en: 'Furniture-making', legacy: true, groupLabel: '예전 기록', tone: 'spare', role: '생산직', duty: '가구·장식 제작 · 품질 옵션' },
+  butchering: { key: 'butchering', name: '분해', en: 'Butchering', legacy: true, groupLabel: '예전 기록', tone: 'spare', role: '생활직', duty: '도축한 고기 손질·부위 분해' },
+  husbandry: { key: 'husbandry', name: '사육', en: 'Animal husbandry', legacy: true, groupLabel: '예전 기록', tone: 'spare', role: '생활직', duty: '동물 사육·사료·번식 · 알·털·배설물' },
+  capturing: { key: 'capturing', name: '포획', en: 'Capturing', legacy: true, groupLabel: '예전 기록', tone: 'spare', role: '생활직', duty: '야생 동물 포획·우리 관리' }
+};
+
+/** '공예술 (대장장이)' 처럼 통칭을 괄호로 붙인 표기를 이름 부분만 남깁니다. */
+function bareName(value) {
+  return value.replace(/\s*[（(][^)）]*[)）]\s*$/, '').trim();
 }
 
-/** 표시용 이름: '도요', '무두질 · 가죽 세공' 처럼 통칭을 함께 */
+/**
+ * 담당직업 값 → 숙련도 항목 (key · 예전 key · 예전 이름 · 직접 적은 이름 모두).
+ * 목록에 없는 이름이면 null (카드에서는 jobTitle 을 대신 보여 줍니다).
+ */
+export function findProfession(key) {
+  if (key === null || key === undefined) { return null; }
+  const raw = String(key).trim();
+  if (!raw) { return null; }
+  const lower = raw.toLowerCase();
+  const direct = PROFICIENCIES.find((p) => p.key === lower);
+  if (direct) { return direct; }
+  const alias = PROFICIENCY_ALIASES[lower] || PROFICIENCY_ALIASES[raw];
+  if (alias) { return PROFICIENCIES.find((p) => p.key === alias) || null; }
+  if (LEGACY_PROFICIENCIES[lower]) { return LEGACY_PROFICIENCIES[lower]; }
+  const bare = bareName(raw);
+  const byName = PROFICIENCIES.find((p) => p.name === raw || p.name === bare
+    || (p.aliases || []).includes(raw) || (p.aliases || []).includes(bare));
+  if (byName) { return byName; }
+  const legacyName = Object.keys(LEGACY_PROFICIENCIES)
+    .map((k) => LEGACY_PROFICIENCIES[k])
+    .find((p) => p.name === raw || p.name === bare);
+  return legacyName || null;
+}
+
+/** 저장·불러오기 정리용: 어떤 표기가 와도 지금 key 하나로 맞춥니다 (못 알아보면 ''). */
+export function normalizeProfession(value) {
+  const p = findProfession(value);
+  return p ? p.key : '';
+}
+
+/** 표시용 이름: 이름 하나만 ('목석', '가죽 세공') */
 export function professionTitle(item) {
   if (!item) { return ''; }
-  return item.alt ? `${item.name} (${item.alt})` : item.name;
+  return item.name;
+}
+
+/** 목록에 없는 이름까지 포함한 담당직업 검색어 (통칭·예전 이름으로도 찾기) */
+export function professionSearchText(item) {
+  if (!item) { return ''; }
+  return [item.name, item.en].concat(item.aliases || []).filter(Boolean).join(' ');
 }
 
 export const VIEWS = [

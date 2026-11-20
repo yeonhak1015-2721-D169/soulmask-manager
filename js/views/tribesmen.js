@@ -1,5 +1,5 @@
 /* 부족원 — 정원·직업 목표·명단 관리 */
-import { ROLE_TONES, PROFICIENCY_GROUPS, findProfession, professionTitle } from '../data.js';
+import { ROLE_TONES, PROFICIENCY_GROUPS, findProfession, professionTitle, professionSearchText } from '../data.js';
 import {
   capacityEditorHTML, tribeStats, paintCapacity, setCapacity, members as recruitedMembers,
   PROFICIENCY_GRADES, NO_GRADE_LABEL, getProficiencyGrade, getMemberGrade, memberGradeBadge,
@@ -301,7 +301,8 @@ function memberCard(m, state) {
   const prof = proficiencyText(m);
   const job = professionLabel(m);
   const duty = memberDuty(m);
-  const search = [m.name, m.goodTraits, m.badTraits, m.skill, m.skillMax, m.facility, m.duty, m.note, m.combatSkill, m.role, m.jobTitle, job, duty, g.label].join(' ').toLowerCase();
+  const search = [m.name, m.goodTraits, m.badTraits, m.skill, m.skillMax, m.facility, m.duty, m.note, m.combatSkill, m.role, m.jobTitle, job, duty, g.label,
+    professionSearchText(findProfession(m.profession))].join(' ').toLowerCase();
   return `<div class="member-card member-grade-${esc(g.tier)}" data-member-card data-grade="${esc(g.label)}" data-search="${esc(search)}">
     <div class="member-top">
       <div class="grow">
@@ -327,7 +328,7 @@ function memberCard(m, state) {
       </div>
     </div>
     <div class="member-flags">
-      <button type="button" class="btn small ${m.recruited ? 'primary' : ''}" data-act="toggle-recruited" data-id="${esc(m.id)}">${m.recruited ? '영입 완료' : '미영입'}</button>
+      <button type="button" class="btn small ${m.recruited ? (g.tier === 'none' ? 'primary' : 'recruited-on ' + g.colorClass) : ''}" data-act="toggle-recruited" data-id="${esc(m.id)}">${m.recruited ? '영입 완료' : '미영입'}</button>
       <button type="button" class="btn small ${m.replaceNeeded ? 'danger' : ''}" data-act="toggle-replace" data-id="${esc(m.id)}">${m.replaceNeeded ? '교체 필요' : '교체 표시'}</button>
     </div>
   </div>`;
@@ -348,8 +349,16 @@ function professionSelectHTML(value) {
     <optgroup label="${esc(g.label)} · ${esc(g.hint)}">
       ${g.items.map((it) => `<option value="${esc(it.key)}"${it.key === value ? ' selected' : ''}>${esc(professionTitle(it))}</option>`).join('')}
     </optgroup>`).join('');
+  /* 지금 목록에 없는 예전 기록은 숨기지 않고 그대로 보여 줘서, 고치기 전까지 값이 남아 있게 합니다. */
+  const cur = findProfession(value);
+  const legacyGroup = (cur && cur.legacy)
+    ? `<optgroup label="예전 기록 (지금 숙련도 목록에 없음)">
+        <option value="${esc(cur.key)}" selected>${esc(cur.name)} · 예전 기록</option>
+      </optgroup>`
+    : '';
   return `<select id="mb-profession" aria-describedby="mb-prof-hint">
     <option value=""${!value ? ' selected' : ''}>선택 안 함 (미지정)</option>
+    ${legacyGroup}
     ${groups}
   </select>`;
 }
@@ -363,7 +372,7 @@ function professionPreviewHTML() {
       <span class="pp-en" data-pp-en></span>
     </div>
     <div class="pp-duty"><span class="pp-label">담당업무 (자동 연결)</span><span data-pp-duty>—</span></div>
-    <p class="pp-hint" id="mb-prof-hint" data-pp-hint>소울마스크 숙련도를 고르면 실제 담당업무와 직업 구분(생산직/생활직/전투직/예비)이 함께 맞춰집니다.</p>
+    <p class="pp-hint" id="mb-prof-hint" data-pp-hint>게임 숙련도 26종 중에서 고르면 담당업무와 직업 구분(생산직/생활직/전투직/예비)이 함께 맞춰집니다.</p>
   </div>`;
 }
 
@@ -477,16 +486,18 @@ function editMember(member, ctx) {
         if (hintEl) {
           hintEl.textContent = p.custom
             ? '직업 이름과 담당업무를 직접 적습니다. 직업 구분은 그대로 두었습니다.'
-            : p.noProf
-              ? `직업 구분을 '${p.groupLabel}'(으)로 맞췄습니다 · 전용 숙련도가 없어 최대 숙련도는 비워 두어도 됩니다.`
-              : `직업 구분을 '${p.groupLabel}'(으)로 맞췄습니다 · 담당업무는 아래 칸에서 고칠 수 있습니다.`;
+            : p.legacy
+              ? '지금 숙련도 목록에 없는 예전 기록입니다. 그대로 저장해도 표시되고, 위 목록에서 새 직업을 고르면 바뀝니다.'
+              : p.noProf
+                ? `직업 구분을 '${p.groupLabel}'(으)로 맞췄습니다 · 전용 숙련도가 없어 최대 숙련도는 비워 두어도 됩니다.`
+                : `직업 구분을 '${p.groupLabel}'(으)로 맞췄습니다 · 담당업무는 아래 칸에서 고칠 수 있습니다.`;
         }
         if (p.role && roleSel) { roleSel.value = p.role; }
       } else {
         if (groupEl) { groupEl.className = 'chip spare'; groupEl.textContent = '미지정'; }
         if (nameEl) { nameEl.textContent = '담당직업을 고르면 담당업무가 자동으로 채워집니다'; }
         if (enEl) { enEl.textContent = ''; }
-        if (hintEl) { hintEl.textContent = '소울마스크 숙련도를 고르면 실제 담당업무와 직업 구분(생산직/생활직/전투직/예비)이 함께 맞춰집니다.'; }
+        if (hintEl) { hintEl.textContent = '게임 숙련도 26종 중에서 고르면 담당업무와 직업 구분(생산직/생활직/전투직/예비)이 함께 맞춰집니다.'; }
       }
       /* 담당업무: 비어 있거나 직전 숙련도의 기본값·예전 '담당 시설' 값 그대로면 새 값으로 채우고, 직접 고쳐 쓴 글은 그대로 둡니다. */
       if (p && !p.custom) {
