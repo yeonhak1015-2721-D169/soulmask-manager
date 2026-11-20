@@ -5,7 +5,7 @@
 */
 import { CATEGORIES, PRIORITIES } from './data.js';
 import { todayKey, dateLabel, str, lines, pct, num } from './util.js';
-import { PROFICIENCY_GRADES, getMemberGrade, needsReplacement } from './tribes-util.js';
+import { PROFICIENCY_GRADES, getMemberGrade, needsReplacement, professionLabel, memberDuty } from './tribes-util.js';
 
 function stamp() {
   const d = new Date();
@@ -168,11 +168,11 @@ export function buildTribes(state) {
     out.push('- 등록된 부족원이 없습니다.');
     return out.join('\n');
   }
-  out.push('| 이름 | 직업 | 현재/최대 숙련도 | 등급 | 긍정 특성 | 부정 특성 | 담당 | 교체 |');
-  out.push('| --- | --- | --- | --- | --- | --- | --- | --- |');
+  out.push('| 이름 | 담당직업 | 직업 구분 | 현재/최대 숙련도 | 등급 | 긍정 특성 | 부정 특성 | 담당업무 | 교체 |');
+  out.push('| --- | --- | --- | --- | --- | --- | --- | --- | --- |');
   members.forEach((m) => {
     const grade = getMemberGrade(m).label;
-    out.push(`| ${m.name} | ${m.role} | ${m.skill || '-'}${m.skillMax ? '/' + m.skillMax : ''} | ${grade} | ${m.goodTraits || '-'} | ${m.badTraits || '-'} | ${m.facility || m.duty || '-'} | ${needsReplacement(m) ? '필요' : '-'} |`);
+    out.push(`| ${m.name} | ${professionLabel(m) || '-'} | ${m.role} | ${m.skill || '-'}${m.skillMax ? '/' + m.skillMax : ''} | ${grade} | ${m.goodTraits || '-'} | ${m.badTraits || '-'} | ${memberDuty(m) || '-'} | ${needsReplacement(m) ? '필요' : '-'} |`);
   });
   const replace = members.filter((m) => needsReplacement(m));
   if (replace.length) {

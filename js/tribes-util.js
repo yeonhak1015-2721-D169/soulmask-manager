@@ -1,5 +1,6 @@
 /* 부족원 정원 · 직업 · 숙련도 등급 계산 (대시보드와 부족원 화면이 함께 사용) */
 import { pct, esc, clampNum } from './util.js';
+import { findProfession, professionTitle, PROFICIENCIES } from './data.js';
 
 /* ---------- 숙련도 등급 자동 판정 ----------
    기준: 부족원의 '직업 최고 숙련도(최대 숙련도)' 값
@@ -87,6 +88,41 @@ export function proficiencyText(m) {
   const max = memberProficiency(m) !== '' ? String(memberProficiency(m)).trim() : '';
   if (cur && max) { return `${cur}/${max}`; }
   return max || cur || '-';
+}
+
+/**
+ * 담당직업(숙련도) 표시 이름.
+ * - 새 데이터: profession 키 → 게임 숙련도 이름 ('도요')
+ * - 직접 입력: jobTitle
+ * - 예전 데이터: profession이 없으면 비워 두고 카드에서 직업 구분으로 대신 보여 줍니다.
+ */
+export function professionLabel(m) {
+  if (!m) { return ''; }
+  const custom = String(m.jobTitle || '').trim();
+  if (m.profession === 'custom') { return custom; }
+  const p = findProfession(m.profession);
+  if (p) { return p.custom ? custom : professionTitle(p); }
+  return custom;
+}
+
+/** 부족원의 담당업무 — 새 duty, 없으면 예전 '담당 시설' 값을 그대로 보여 줍니다. */
+export function memberDuty(m) {
+  if (!m) { return ''; }
+  const duty = String(m.duty || '').trim();
+  if (duty) { return duty; }
+  return String(m.facility || '').trim();
+}
+
+/** 담당직업의 직업 구분(생산직/생활직/전투직/예비) */
+export function professionRole(key) {
+  const p = findProfession(key);
+  return p ? p.role : '';
+}
+
+/** 직업순 정렬용 순위 (숙련도 목록 순서, 미지정은 맨 뒤) */
+export function professionRank(m) {
+  const i = PROFICIENCIES.findIndex((p) => p.key === (m && m.profession));
+  return i === -1 ? PROFICIENCIES.length : i;
 }
 
 /** 색 배지 HTML */

@@ -5,7 +5,7 @@
      오프라인에서는 폰트 CSS만 실패하고 --font-sans의 시스템 한글 폰트로 자연스럽게 대체됩니다. */
 'use strict';
 
-var CACHE = 'soulmask-planner-v6';
+var CACHE = 'soulmask-planner-v7';
 var ASSETS = [
   './',
   './index.html',

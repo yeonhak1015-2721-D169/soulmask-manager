@@ -1,9 +1,10 @@
 /* 부족원 — 정원·직업 목표·명단 관리 */
-import { ROLE_TONES } from '../data.js';
+import { ROLE_TONES, PROFICIENCY_GROUPS, findProfession, professionTitle } from '../data.js';
 import {
   capacityEditorHTML, tribeStats, paintCapacity, setCapacity, members as recruitedMembers,
   PROFICIENCY_GRADES, NO_GRADE_LABEL, getProficiencyGrade, getMemberGrade, memberGradeBadge,
-  needsReplacement, gradeRank, proficiencyText, gradeCounts, replaceTargets, gradeBadge, memberProficiency
+  needsReplacement, gradeRank, proficiencyText, gradeCounts, replaceTargets, gradeBadge, memberProficiency,
+  professionLabel, memberDuty, professionRank
 } from '../tribes-util.js';
 import { buildTribes } from '../ai-io.js';
 import { progressBar, pct, esc, uid, copyText, clampNum, debounce } from '../util.js';
@@ -48,7 +49,9 @@ function sortMembers(list) {
   else {
     const order = {};
     (state0 ? state0.tribes.roles : []).forEach((r, i) => { order[r.name] = i; });
-    arr.sort((a, b) => (order[a.role] || 0) - (order[b.role] || 0));
+    arr.sort((a, b) => (order[a.role] || 0) - (order[b.role] || 0)
+      || (professionRank(a) - professionRank(b))
+      || String(a.name).localeCompare(String(b.name), 'ko'));
   }
   return arr;
 }
@@ -75,7 +78,7 @@ const tribesmen = {
       if (!memberMatchesGrade(m, uiState.grade)) { return false; }
       if (uiState.onlyReplace && !needsReplacement(m)) { return false; }
       if (!query) { return true; }
-      return [m.name, m.goodTraits, m.badTraits, m.skill, m.skillMax, m.facility, m.duty, m.note, m.combatSkill, m.role, getMemberGrade(m).label]
+      return [m.name, m.goodTraits, m.badTraits, m.skill, m.skillMax, m.facility, m.duty, m.note, m.combatSkill, m.role, m.jobTitle, professionLabel(m), getMemberGrade(m).label]
         .join(' ').toLowerCase().includes(query);
     });
     list = sortMembers(list);
@@ -159,7 +162,7 @@ const tribesmen = {
     </div>
 
     <div class="toolbar">
-      <input class="search-input grow" type="search" placeholder="이름·특성·숙련도·담당 검색" value="${esc(uiState.query)}" data-live="member-search" aria-label="부족원 검색">
+      <input class="search-input grow" type="search" placeholder="이름·담당직업·숙련도·담당업무 검색" value="${esc(uiState.query)}" data-live="member-search" aria-label="부족원 검색">
       <select class="search-input" style="width:auto" data-field="role-filter" aria-label="직업 필터">
         <option value="전체">전체 직업</option>
         ${state.tribes.roles.map((r) => `<option value="${esc(r.name)}"${uiState.role === r.name ? ' selected' : ''}>${esc(r.name)}</option>`).join('')}
@@ -176,7 +179,7 @@ const tribesmen = {
     <div class="list" id="member-list">
       ${list.length ? list.map((m) => memberCard(m, state)).join('') : `<div class="empty">
         <p class="empty-main">${all.length ? '조건에 맞는 부족원이 없습니다' : '아직 등록된 부족원이 없습니다'}</p>
-        <p class="empty-sub">+ 부족원 등록으로 이름·직업·숙련도·특성을 기록하면 정원 대비 영입률이 채워집니다.</p>
+        <p class="empty-sub">+ 부족원 등록으로 담당직업(숙련도)을 고르면 담당업무가 자동으로 채워집니다. 이름·숙련도·특성도 함께 기록해 보세요.</p>
       </div>`}
     </div>
     <p class="hint">정원 ${st.capacity}명 중 ${st.current}명 등록 · 교체 대상 ${st.replaceCount}명(자동 등급 포함) · 영입 여부를 끄면 명단에는 남지만 집계에서 빠집니다.</p>`;
@@ -296,11 +299,13 @@ function memberCard(m, state) {
   const tone = (state.tribes.roles.find((r) => r.name === m.role) || { tone: 'spare' }).tone;
   const g = getMemberGrade(m);
   const prof = proficiencyText(m);
-  const search = [m.name, m.goodTraits, m.badTraits, m.skill, m.skillMax, m.facility, m.duty, m.note, m.combatSkill, m.role, g.label].join(' ').toLowerCase();
+  const job = professionLabel(m);
+  const duty = memberDuty(m);
+  const search = [m.name, m.goodTraits, m.badTraits, m.skill, m.skillMax, m.facility, m.duty, m.note, m.combatSkill, m.role, m.jobTitle, job, duty, g.label].join(' ').toLowerCase();
   return `<div class="member-card member-grade-${esc(g.tier)}" data-member-card data-grade="${esc(g.label)}" data-search="${esc(search)}">
     <div class="member-top">
       <div class="grow">
-        <div class="member-name">${esc(m.name)}
+        <div class="member-name">${esc(m.name)}${job ? `<span class="member-job">· ${esc(job)}</span>` : ''}
           <span class="chip ${esc(tone)}">${esc(m.role)}</span>
           ${memberGradeBadge(m)}
           ${m.recruited ? '' : '<span class="chip red">미영입</span>'}
@@ -309,9 +314,8 @@ function memberCard(m, state) {
         <div class="member-meta">
           <span>성별 <b>${esc(m.gender)}</b></span>
           <span>현재/최대 숙련도 <b data-prof-text>${esc(prof)}</b></span>
-          ${m.facility ? `<span>담당 시설 <b>${esc(m.facility)}</b></span>` : ''}
-          ${m.duty ? `<span>담당 업무 <b>${esc(m.duty)}</b></span>` : ''}
         </div>
+        ${duty ? `<p class="row-note member-duty"><span class="duty-label">담당업무</span> ${esc(duty)}</p>` : ''}
         ${m.goodTraits ? `<p class="row-note">＋ ${esc(m.goodTraits)}</p>` : ''}
         ${m.badTraits ? `<p class="row-note">− ${esc(m.badTraits)}</p>` : ''}
         ${m.combatSkill ? `<p class="row-note">전투: ${esc(m.combatSkill)}</p>` : ''}
@@ -338,24 +342,64 @@ function gradeNote(g) {
   return `최대 숙련도 ${g.value} → ${g.label} (${g.range})`;
 }
 
+/* ---------- 담당직업(숙련도) 선택 UI ---------- */
+function professionSelectHTML(value) {
+  const groups = PROFICIENCY_GROUPS.map((g) => `
+    <optgroup label="${esc(g.label)} · ${esc(g.hint)}">
+      ${g.items.map((it) => `<option value="${esc(it.key)}"${it.key === value ? ' selected' : ''}>${esc(professionTitle(it))}</option>`).join('')}
+    </optgroup>`).join('');
+  return `<select id="mb-profession" aria-describedby="mb-prof-hint">
+    <option value=""${!value ? ' selected' : ''}>선택 안 함 (미지정)</option>
+    ${groups}
+  </select>`;
+}
+
+function professionPreviewHTML() {
+  return `
+  <div class="prof-preview" data-prof-preview>
+    <div class="pp-top">
+      <span class="chip spare" data-pp-group>미지정</span>
+      <b class="pp-name" data-pp-name>담당직업을 고르면 담당업무가 자동으로 채워집니다</b>
+      <span class="pp-en" data-pp-en></span>
+    </div>
+    <div class="pp-duty"><span class="pp-label">담당업무 (자동 연결)</span><span data-pp-duty>—</span></div>
+    <p class="pp-hint" id="mb-prof-hint" data-pp-hint>소울마스크 숙련도를 고르면 실제 담당업무와 직업 구분(생산직/생활직/전투직/예비)이 함께 맞춰집니다.</p>
+  </div>`;
+}
+
 function editMember(member, ctx) {
   const isNew = !member;
   const roles = ctx.state.tribes.roles;
   const m = member || {
     name: '', role: roles[0] ? roles[0].name : '생산직', gender: '미입력', recruited: true,
-    skill: '', skillMax: '', goodTraits: '', badTraits: '', combatSkill: '', facility: '', duty: '',
+    skill: '', skillMax: '', goodTraits: '', badTraits: '', combatSkill: '',
+    profession: '', jobTitle: '', facility: '', duty: '',
     replaceNeeded: false, note: ''
   };
+  /* 예전 데이터(담당 시설만 적힌 경우)도 잃지 않도록 담당업무로 이어받습니다. */
+  const legacyFacility = String(m.facility || '').trim();
+  const dutyValue = String(m.duty || '').trim() || legacyFacility;
   openModal({
     title: isNew ? '부족원 등록' : '부족원 수정',
     wide: true,
     bodyHTML:
       `<div class="field-row">
         <div class="field"><label for="mb-name">이름</label><input id="mb-name" type="text" value="${esc(m.name)}" maxlength="60" placeholder="부족원 이름"></div>
-        <div class="field"><label for="mb-role">직업</label>${selectInput('mb-role', roles.map((r) => r.name), m.role)}</div>
+        <div class="field"><label for="mb-profession">담당직업 (숙련도)</label>${professionSelectHTML(m.profession || '')}</div>
       </div>
-      <div class="field-row three">
+      ${professionPreviewHTML()}
+      <div class="field"><label for="mb-duty">담당업무</label>${textArea('mb-duty', dutyValue, 2, 'placeholder="예: 주괴 생산 · 숯·유리·석회 가마 제련"')}
+        <p class="hint">담당직업을 고르면 게임에서 하는 일이 자동으로 들어갑니다. 그대로 써도 되고, 우리 거점 상황에 맞게 고쳐도 됩니다.</p>
+      </div>
+      ${legacyFacility && !String(m.duty || '').trim()
+        ? `<p class="hint">예전에 적어 둔 '담당 시설'(${esc(legacyFacility)})을 담당업무로 옮겨 두었습니다. 저장해도 원래 기록은 지워지지 않습니다.</p>`
+        : ''}
+      <div class="field-row">
+        <div class="field"><label for="mb-role">직업 구분</label>${selectInput('mb-role', roles.map((r) => r.name), m.role)}</div>
         <div class="field"><label for="mb-gender">성별</label>${selectInput('mb-gender', GENDERS, m.gender)}</div>
+      </div>
+      <div class="field" data-custom-field hidden><label for="mb-custom-job">직접 입력 직업명</label><input id="mb-custom-job" type="text" maxlength="40" value="${esc(m.profession === 'custom' ? m.jobTitle : '')}" placeholder="예: 가마 담당"></div>
+      <div class="field-row">
         <div class="field"><label for="mb-skill">현재 숙련도</label><input id="mb-skill" type="text" inputmode="numeric" value="${esc(m.skill)}" placeholder="예: 100"></div>
         <div class="field"><label for="mb-skillmax">직업 최고 숙련도(최대 숙련도)</label><input id="mb-skillmax" type="text" inputmode="numeric" value="${esc(memberProficiencyValue(m))}" placeholder="예: 103"></div>
       </div>
@@ -367,11 +411,7 @@ function editMember(member, ctx) {
       <p class="hint">등급 기준 — 100 이하 교체필수 · 101~110 교체필요 · 111~119 교체검토 · 120 이상 영입완료. 비워 두면 등급을 매기지 않습니다.</p>
       ${field('긍정 특성', textInput('mb-good', m.goodTraits, 'placeholder="예: 손재주, 야간 작업"'), '쉼표로 구분해도 됩니다.')}
       ${field('부정 특성', textInput('mb-bad', m.badTraits, 'placeholder="예: 겁이 많음"'))}
-      <div class="field-row">
-        <div class="field"><label for="mb-combat">전투 스킬</label><input id="mb-combat" type="text" value="${esc(m.combatSkill)}" placeholder="예: 도끼 B, 활 C"></div>
-        <div class="field"><label for="mb-facility">담당 시설</label><input id="mb-facility" type="text" value="${esc(m.facility)}" placeholder="예: 제련기"></div>
-      </div>
-      ${field('담당 업무', textInput('mb-duty', m.duty, 'placeholder="예: 청동 주괴 생산"'))}
+      <div class="field"><label for="mb-combat">전투 스킬</label><input id="mb-combat" type="text" value="${esc(m.combatSkill)}" placeholder="예: 도끼 B, 활 C"></div>
       <label class="switch-row"><input type="checkbox" id="mb-recruited" ${m.recruited ? 'checked' : ''}><span>영입 완료 (체크를 끄면 집계에서 제외)</span></label>
       <label class="switch-row"><input type="checkbox" id="mb-replace" ${m.replaceNeeded ? 'checked' : ''}><span>교체 대상</span></label>
       ${field('비고', textArea('mb-note', m.note, 2, 'placeholder="자유 메모"'))}
@@ -380,6 +420,10 @@ function editMember(member, ctx) {
     onSubmit: (form) => {
       const name = ctx.val(form, 'mb-name');
       if (!name) { throw new Error('이름을 입력해 주세요.'); }
+      const profKey = ctx.val(form, 'mb-profession') || '';
+      const prof = findProfession(profKey);
+      const customName = ctx.val(form, 'mb-custom-job');
+      if (profKey === 'custom' && !customName) { throw new Error('직접 입력할 직업명을 적어 주세요.'); }
       const data = {
         name,
         role: ctx.val(form, 'mb-role'),
@@ -390,8 +434,10 @@ function editMember(member, ctx) {
         goodTraits: ctx.val(form, 'mb-good'),
         badTraits: ctx.val(form, 'mb-bad'),
         combatSkill: ctx.val(form, 'mb-combat'),
-        facility: ctx.val(form, 'mb-facility'),
-        duty: ctx.val(form, 'mb-duty'),
+        profession: profKey,
+        jobTitle: profKey === 'custom' ? customName : '',
+        facility: (member && member.facility) || '',
+        duty: ctx.val(form, 'mb-duty') || (prof && !prof.custom ? prof.duty : ''),
         replaceNeeded: ctx.check(form, 'mb-replace'),
         note: ctx.val(form, 'mb-note')
       };
@@ -404,22 +450,94 @@ function editMember(member, ctx) {
     }
   });
 
-  /* 최대 숙련도를 입력하는 동안 등급 배지를 즉시 미리 보기 */
+  /* 담당직업(숙련도)을 고르면 담당업무·직업 구분을 자동으로 맞춥니다 */
   const form = document.getElementById('modal-form');
+  const profSel = form && form.querySelector('#mb-profession');
+  const roleSel = form && form.querySelector('#mb-role');
+  const dutyEl = form && form.querySelector('#mb-duty');
+  const customField = form && form.querySelector('[data-custom-field]');
+  const customEl = form && form.querySelector('#mb-custom-job');
+  const profPreview = form && form.querySelector('[data-prof-preview]');
+  if (profSel && dutyEl && profPreview) {
+    const paintProf = () => {
+      const key = profSel.value;
+      const p = findProfession(key);
+      const isCustom = key === 'custom';
+      if (customField) { customField.hidden = !isCustom; }
+      profPreview.className = 'prof-preview' + (p ? ' pp-on tone-' + (p.tone || 'spare') : '');
+      const groupEl = profPreview.querySelector('[data-pp-group]');
+      const nameEl = profPreview.querySelector('[data-pp-name]');
+      const enEl = profPreview.querySelector('[data-pp-en]');
+      const dutyPrev = profPreview.querySelector('[data-pp-duty]');
+      const hintEl = profPreview.querySelector('[data-pp-hint]');
+      if (p) {
+        if (groupEl) { groupEl.className = 'chip ' + (p.tone || 'spare'); groupEl.textContent = p.groupLabel; }
+        if (nameEl) { nameEl.textContent = p.custom ? (customEl.value.trim() || '직접 입력') : professionTitle(p); }
+        if (enEl) { enEl.textContent = p.en || ''; }
+        if (hintEl) {
+          hintEl.textContent = p.custom
+            ? '직업 이름과 담당업무를 직접 적습니다. 직업 구분은 그대로 두었습니다.'
+            : p.noProf
+              ? `직업 구분을 '${p.groupLabel}'(으)로 맞췄습니다 · 전용 숙련도가 없어 최대 숙련도는 비워 두어도 됩니다.`
+              : `직업 구분을 '${p.groupLabel}'(으)로 맞췄습니다 · 담당업무는 아래 칸에서 고칠 수 있습니다.`;
+        }
+        if (p.role && roleSel) { roleSel.value = p.role; }
+      } else {
+        if (groupEl) { groupEl.className = 'chip spare'; groupEl.textContent = '미지정'; }
+        if (nameEl) { nameEl.textContent = '담당직업을 고르면 담당업무가 자동으로 채워집니다'; }
+        if (enEl) { enEl.textContent = ''; }
+        if (hintEl) { hintEl.textContent = '소울마스크 숙련도를 고르면 실제 담당업무와 직업 구분(생산직/생활직/전투직/예비)이 함께 맞춰집니다.'; }
+      }
+      /* 담당업무: 비어 있거나 직전 숙련도의 기본값·예전 '담당 시설' 값 그대로면 새 값으로 채우고, 직접 고쳐 쓴 글은 그대로 둡니다. */
+      if (p && !p.custom) {
+        const prevAuto = String(dutyEl.dataset.auto || '').trim();
+        const cur = dutyEl.value.trim();
+        if (!cur || cur === prevAuto || (legacyFacility && cur === legacyFacility)) { dutyEl.value = p.duty; }
+        dutyEl.dataset.auto = p.duty;
+      } else {
+        dutyEl.dataset.auto = '';
+      }
+      if (dutyPrev) {
+        dutyPrev.textContent = p
+          ? (p.custom ? (dutyEl.value.trim() || '담당업무를 직접 적어 주세요') : p.duty)
+          : '—';
+      }
+      const maxEl = form.querySelector('#mb-skillmax');
+      if (maxEl) { maxEl.dispatchEvent(new Event('input')); }
+    };
+    profSel.addEventListener('change', paintProf);
+    if (customEl) {
+      customEl.addEventListener('input', () => { if (profSel.value === 'custom') { paintProf(); } });
+    }
+    dutyEl.addEventListener('input', () => {
+      const dutyPrev = profPreview.querySelector('[data-pp-duty]');
+      if (dutyPrev && profSel.value === 'custom') { dutyPrev.textContent = dutyEl.value.trim() || '담당업무를 직접 적어 주세요'; }
+    });
+    paintProf();
+  }
+
+  /* 최대 숙련도를 입력하는 동안 등급 배지를 즉시 미리 보기 */
   const maxInput = form && form.querySelector('#mb-skillmax');
   const preview = form && form.querySelector('[data-grade-preview]');
   if (maxInput && preview) {
     const paint = () => {
       const g = getProficiencyGrade(maxInput.value);
+      const cur = findProfession(profSel ? profSel.value : '');
       const badge = preview.querySelector('.gp-badge');
       const note = preview.querySelector('.gp-note');
       if (badge) { badge.innerHTML = gradeBadge(g); }
-      if (note) { note.textContent = gradeNote(g); }
+      if (note) {
+        note.textContent = (!g.hasValue && cur && cur.noProf)
+          ? '전용 숙련도 없는 직업 — 비워 두면 등급을 매기지 않습니다.'
+          : gradeNote(g);
+      }
       preview.className = 'grade-preview grade-preview-' + g.tier;
     };
     maxInput.addEventListener('input', paint);
     maxInput.addEventListener('change', paint);
     paint();
+    /* 이미 정해진 직업(예: 전용 숙련도 없는 원정 사냥)이면 등급 안내도 그에 맞춰 다시 칠합니다. */
+    if (profSel) { profSel.dispatchEvent(new Event('change')); }
   }
 }
 

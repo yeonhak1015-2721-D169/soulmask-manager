@@ -74,6 +74,8 @@ function normMember(m, roles) {
     goodTraits: str(m && m.goodTraits, 300),
     badTraits: str(m && m.badTraits, 300),
     combatSkill: str(m && m.combatSkill, 200),
+    profession: str(m && m.profession, 24),
+    jobTitle: str(m && m.jobTitle, 40),
     facility: str(m && m.facility, 60),
     duty: str(m && m.duty, 120),
     replaceNeeded: !!(m && m.replaceNeeded),
