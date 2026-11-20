@@ -4,7 +4,7 @@
    - 다른 출처(api.github.com 등)는 그대로 통과 */
 'use strict';
 
-var CACHE = 'soulmask-planner-v4';
+var CACHE = 'soulmask-planner-v5';
 var ASSETS = [
   './',
   './index.html',
@@ -27,10 +27,10 @@ var ASSETS = [
   './js/views/journal.js',
   './js/views/youtube.js',
   './js/views/settings.js',
-  './icon-192.png',
-  './icon-512.png',
-  './icon-180.png',
-  './icon-maskable-512.png'
+  './icons/icon-192.png',
+  './icons/icon-512.png',
+  './icons/icon-180.png',
+  './icons/icon-maskable.png'
 ];
 
 self.addEventListener('install', function (event) {

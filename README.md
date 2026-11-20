@@ -32,7 +32,9 @@ js/sync.js            GitHub Gist 동기화(토큰은 기기에만)
 js/ai-io.js           AI 복사 텍스트 · Markdown 내보내기 · 일괄 등록 파서
 js/tribes-util.js     정원·직업 계산 · 숙련도 등급 자동 판정
 js/views/*.js         9개 화면
-manifest.json, sw.js  PWA 설치 · 오프라인 캐시(soulmask-planner-v4)
+manifest.json, sw.js  PWA 설치 · 오프라인 캐시(soulmask-planner-v5)
+icons/                앱 아이콘 (icon-180 / 192 / 512 / maskable / 1024 원본)
+.github/workflows/build-android-apk.yml  안드로이드 APK 자동 빌드
 ```
 
 ## 숙련도 등급 자동 판정
@@ -79,6 +81,18 @@ manifest.json, sw.js  PWA 설치 · 오프라인 캐시(soulmask-planner-v4)
 
 - 안드로이드 Chrome: ⋮ → 홈 화면에 추가 / 앱 설치
 - 아이폰 Safari: 공유 → 홈 화면에 추가
+
+## 안드로이드 앱 (APK)
+
+웹 버전과 같은 코드를 Capacitor로 감싼 APK를 GitHub Actions에서 자동으로 빌드합니다.
+
+- 내려받기: https://github.com/yeonhak1015-2721-D169/soulmask-manager/releases/download/latest-apk/Soulmask-Planner.apk
+- 릴리스 페이지: https://github.com/yeonhak1015-2721-D169/soulmask-manager/releases/tag/latest-apk
+- 빌드 기록: Actions → **Build Android APK** (main에 `index.html`·`js/**`·`css/**`·`icons/**`·`manifest.json`·`sw.js`가 바뀌면 자동 실행, 수동 실행도 가능)
+
+APK는 서명이 필요 없는 **디버그 빌드**입니다. 설치할 때 "출처를 알 수 없는 앱 설치"를 허용해야 하고, 새 빌드로 교체할 때는 기존 앱을 지우고 설치해야 할 수 있습니다.
+
+앱 아이콘은 `icons/icon-1024.png`를 원본으로 삼아 빌드 중에 자동으로 만들어 넣습니다(런처 아이콘·원형 아이콘·적응형 아이콘·스플래시).
 
 ## 백업
 
