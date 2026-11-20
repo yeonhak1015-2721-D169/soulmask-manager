@@ -1,16 +1,18 @@
 /* Soulmask Planner · 오프라인 우선 서비스 워커
    - 화면(HTML) 요청: 네트워크 먼저, 실패하면 캐시
    - 모듈·스타일·아이콘: 캐시 먼저, 뒤에서 최신 버전으로 갱신
-   - 다른 출처(api.github.com 등)는 그대로 통과 */
+   - 다른 출처(api.github.com, Pretendard CDN 폰트 CSS 등)는 그대로 통과:
+     오프라인에서는 폰트 CSS만 실패하고 --font-sans의 시스템 한글 폰트로 자연스럽게 대체됩니다. */
 'use strict';
 
-var CACHE = 'soulmask-planner-v5';
+var CACHE = 'soulmask-planner-v6';
 var ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './css/styles.css',
   './js/app.js',
+  './js/icons.js',
   './js/data.js',
   './js/store.js',
   './js/sync.js',

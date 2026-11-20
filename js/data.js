@@ -46,15 +46,15 @@ export const ROLE_TONES = {
 };
 
 export const VIEWS = [
-  { id: 'dashboard', title: '대시보드', icon: '🏠', mobile: true },
-  { id: 'todos', title: '할 일', icon: '☑️', mobile: true },
-  { id: 'tribesmen', title: '부족원', icon: '👥', mobile: true },
-  { id: 'bosses', title: '보스·탐험', icon: '⚔️', mobile: true },
-  { id: 'journal', title: '플레이 일지', icon: '📜', mobile: true },
-  { id: 'roadmap', title: '로드맵', icon: '🗺️', mobile: false },
-  { id: 'resources', title: '자원·거점', icon: '🪵', mobile: false },
-  { id: 'youtube', title: '유튜브', icon: '🎬', mobile: false },
-  { id: 'settings', title: '설정·백업', icon: '⚙️', mobile: false }
+  { id: 'dashboard', title: '대시보드', mobile: true },
+  { id: 'todos', title: '할 일', mobile: true },
+  { id: 'tribesmen', title: '부족원', mobile: true },
+  { id: 'bosses', title: '보스·탐험', mobile: true },
+  { id: 'journal', title: '플레이 일지', mobile: true },
+  { id: 'roadmap', title: '로드맵', mobile: false },
+  { id: 'resources', title: '자원·거점', mobile: false },
+  { id: 'youtube', title: '유튜브', mobile: false },
+  { id: 'settings', title: '설정·백업', mobile: false }
 ];
 
 /* ---------- 검증된 보스 정보 ---------- */

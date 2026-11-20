@@ -27,12 +27,13 @@ index.html            앱 셸 (사이드바·하단 내비·더보기 시트·�
 css/styles.css        다크 브론즈 테마
 js/app.js             라우터 / 이벤트 위임 / 상태 표시
 js/data.js            초기 시드 · 검증된 보스 정보 · 14단계 로드맵
+js/icons.js           하단 내비·사이드바용 인라인 SVG 아이콘
 js/store.js           localStorage 저장 · v1 마이그레이션 · 백업/복원 · pendingSync
 js/sync.js            GitHub Gist 동기화(토큰은 기기에만)
 js/ai-io.js           AI 복사 텍스트 · Markdown 내보내기 · 일괄 등록 파서
 js/tribes-util.js     정원·직업 계산 · 숙련도 등급 자동 판정
 js/views/*.js         9개 화면
-manifest.json, sw.js  PWA 설치 · 오프라인 캐시(soulmask-planner-v5)
+manifest.json, sw.js  PWA 설치 · 오프라인 캐시(soulmask-planner-v6)
 icons/                앱 아이콘 (icon-180 / 192 / 512 / maskable / 1024 원본)
 scripts/build-android-apk.sh  안드로이드 APK 빌드 스크립트 (GitHub Actions가 실행)
 ```

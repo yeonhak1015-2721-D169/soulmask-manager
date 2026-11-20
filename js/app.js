@@ -1,6 +1,7 @@
 /* Soulmask Planner — 앱 셸 / 라우터
    9개 뷰를 해시 라우팅으로 전환하고, 클릭·입력 이벤트를 위임합니다. */
 import { VIEWS } from './data.js';
+import { iconFor } from './icons.js';
 import { store, storageStatus } from './store.js';
 import * as sync from './sync.js';
 import { toast, openModal, closeModal } from './ui.js';
@@ -80,23 +81,23 @@ function buildNav() {
   if (side) {
     side.innerHTML = VIEWS.map((v) => `
       <button type="button" class="side-link" data-act="nav" data-view="${v.id}">
-        <span class="si" aria-hidden="true">${v.icon}</span><span>${esc(v.title)}</span>
+        <span class="si" aria-hidden="true">${iconFor(v.id)}</span><span>${esc(v.title)}</span>
       </button>`).join('');
   }
   if (bottom) {
     const mobile = VIEWS.filter((v) => v.mobile);
     bottom.innerHTML = mobile.map((v) => `
       <button type="button" class="nav-btn" data-act="nav" data-view="${v.id}">
-        <span class="nv-ico" aria-hidden="true">${v.icon}</span><span>${esc(v.title.replace('플레이 ', ''))}</span>
+        <span class="nv-ico" aria-hidden="true">${iconFor(v.id)}</span><span>${esc(v.title.replace('플레이 ', ''))}</span>
       </button>`).join('') + `
       <button type="button" class="nav-btn" data-act="open-sheet" id="more-btn">
-        <span class="nv-ico" aria-hidden="true">⋯</span><span>더보기</span>
+        <span class="nv-ico" aria-hidden="true">${iconFor('more')}</span><span>더보기</span>
       </button>`;
   }
   if (sheet) {
     sheet.innerHTML = VIEWS.map((v) => `
       <button type="button" class="sheet-link" data-act="nav" data-view="${v.id}">
-        <span class="si" aria-hidden="true">${v.icon}</span><span>${esc(v.title)}</span>
+        <span class="si" aria-hidden="true">${iconFor(v.id)}</span><span>${esc(v.title)}</span>
       </button>`).join('');
   }
 }
