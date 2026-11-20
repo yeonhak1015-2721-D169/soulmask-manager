@@ -1,14 +1,9 @@
 name: Build Android APK
 
-# ─────────────────────────────────────────────────────────────
-# GitHub App 권한(workflows) 때문에 이 워크플로 파일은 자동으로 올릴 수 없습니다.
-# 저장소에 .github/workflows/build-android-apk.yml 로 복사해서 한 번만 추가하면,
-# 그 뒤로는 main에 변경이 생길 때마다 APK가 자동 빌드됩니다.
-# ─────────────────────────────────────────────────────────────
-
-# 이 파일을 저장소의 `.github/workflows/build-android-apk.yml` 로 올리면
-# main 브랜치에 웹 파일이 바뀔 때마다 안드로이드 APK가 자동으로 빌드됩니다.
-# 빌드 로직은 scripts/build-android-apk.sh 에 있습니다.
+# GitHub App 권한(workflows) 때문에 이 워크플로 파일은 자동으로 커밋할 수 없습니다.
+# 저장소에 `.github/workflows/build-android-apk.yml` 로 한 번만 올리면,
+# 그 뒤로는 main에 웹 파일이 바뀔 때마다 안드로이드 APK가 자동으로 빌드됩니다.
+# 실제 빌드 로직은 scripts/build-android-apk.sh 에 있습니다.
 
 on:
   workflow_dispatch:
@@ -42,6 +37,13 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
+
+      # 디버그 서명 키를 빌드마다 재사용해서, 새 APK를 기존 앱 위에 그대로 설치할 수 있게 함
+      - name: Cache debug keystore
+        uses: actions/cache@v4
+        with:
+          path: ~/.android
+          key: android-debug-keystore-v1
 
       - name: Build Soulmask Planner APK
         env:

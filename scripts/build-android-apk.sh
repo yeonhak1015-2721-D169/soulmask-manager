@@ -213,7 +213,7 @@ if [ -n "${GITHUB_REPOSITORY:-}" ] && command -v gh > /dev/null 2>&1; then
 2. 파일을 열고 "출처를 알 수 없는 앱 설치" 알림이 뜨면 허용합니다.
 3. 설치 후 홈 화면의 **Soulmask Planner** 아이콘으로 실행합니다.
 
-> 디버그 빌드라서 서명이 매번 새로 만들어집니다. 새 버전을 설치할 때 기존 앱을 지우고 설치해야 할 수 있습니다.
+> 디버그 빌드입니다. 기존에 설치한 앱이 있으면 새 APK를 한 번은 지우고 설치해야 할 수 있고, 그 뒤로는 같은 서명으로 업데이트됩니다.
 MD
   gh release delete latest-apk --repo "$GITHUB_REPOSITORY" --yes --cleanup-tag || true
   gh release create latest-apk "dist/$APK_NAME" \
