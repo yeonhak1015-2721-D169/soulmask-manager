@@ -34,7 +34,7 @@ js/tribes-util.js     정원·직업 계산 · 숙련도 등급 자동 판정
 js/views/*.js         9개 화면
 manifest.json, sw.js  PWA 설치 · 오프라인 캐시(soulmask-planner-v5)
 icons/                앱 아이콘 (icon-180 / 192 / 512 / maskable / 1024 원본)
-.github/workflows/build-android-apk.yml  안드로이드 APK 자동 빌드
+scripts/build-android-apk.sh  안드로이드 APK 빌드 스크립트 (GitHub Actions가 실행)
 ```
 
 ## 숙련도 등급 자동 판정
@@ -93,6 +93,8 @@ icons/                앱 아이콘 (icon-180 / 192 / 512 / maskable / 1024 원�
 APK는 서명이 필요 없는 **디버그 빌드**입니다. 설치할 때 "출처를 알 수 없는 앱 설치"를 허용해야 하고, 새 빌드로 교체할 때는 기존 앱을 지우고 설치해야 할 수 있습니다.
 
 앱 아이콘은 `icons/icon-1024.png`를 원본으로 삼아 빌드 중에 자동으로 만들어 넣습니다(런처 아이콘·원형 아이콘·적응형 아이콘·스플래시).
+
+빌드는 `scripts/build-android-apk.sh`가 담당하고, 트리거는 **`.github/workflows/build-android-apk.yml`** 워크플로 파일입니다. 이 파일은 GitHub App에 `workflows` 권한이 없어 자동으로 올릴 수 없으므로, 저장소에 한 번만 직접 추가하면 됩니다.
 
 ## 백업
 
