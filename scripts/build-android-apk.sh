@@ -46,7 +46,8 @@ if command -v sdkmanager > /dev/null 2>&1; then
   done
 fi
 
-python3 -m pip install --quiet --upgrade Pillow
+python3 -m pip install --quiet --upgrade Pillow || echo "warning: Pillow 설치를 건너뜁니다"
+python3 -c "import PIL" || { echo "error: Pillow가 필요합니다"; exit 1; }
 
 # ── 2. 웹 자산 스테이징 ─────────────────────────────────────
 step "stage www/"
