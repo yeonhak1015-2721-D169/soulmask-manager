@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="dark">
+<meta name="theme-color" content="#07080a">
+<title>하기 로그 내레이션 스튜디오 · 생존 일지 TTS</title>
+<meta name="description" content="하기 로그 채널의 생존 일지 내레이션을 장면 단위로 만들고 WAV로 내려받는 개인용 TTS 스튜디오. Gemini TTS 무료 티어 사용.">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="manifest" href="./manifest.json">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<link rel="stylesheet" href="./css/styles.css">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230b0e13'/%3E%3Cpath d='M32 12v22M32 40a6 6 0 1 0 0 12 6 6 0 0 0 0-12z' stroke='%23f59e0b' stroke-width='4' fill='none' stroke-linecap='round'/%3E%3Cpath d='M22 20h20' stroke='%23f59e0b' stroke-width='3' stroke-linecap='round'/%3E%3C/svg%3E">
+</head>
+<body>
+
+<header class="topbar">
+  <div class="brand">
+    <span class="brand-mark" aria-hidden="true">🎙️</span>
+    <div>
+      <h1>내레이션 스튜디오</h1>
+      <p>하기 로그 · 생존 일지 보이스</p>
+    </div>
+  </div>
+  <button type="button" class="status-chip" id="status-chip" data-state="empty" aria-label="API 연결 상태 · 설정으로 이동">
+    <span class="dot" aria-hidden="true"></span>
+    <span id="status-text">키 없음</span>
+  </button>
+</header>
+
+<nav class="quicknav" aria-label="구역 바로가기">
+  <a href="#sec-voice">화자 음색</a>
+  <a href="#sec-pace">속도 · 호흡</a>
+  <a href="#sec-prompt">발성 지시문</a>
+  <a href="#sec-samples">샘플</a>
+  <a href="#sec-script">장면 대본</a>
+  <a href="#sec-key">API 설정</a>
+</nav>
+
+<main class="layout">
+  <div class="col">
+    <section class="panel" id="sec-key" aria-labelledby="h-key">
+      <div class="panel-head">
+        <h2 id="h-key"><span class="ico" aria-hidden="true">🔑</span> Gemini API 키</h2>
+        <span class="pill" id="key-pill">미연결</span>
+      </div>
+      <p class="hint">
+        무료 키는 <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer">Google AI Studio → API 키</a>에서 1분이면 발급됩니다.
+        키는 <b>이 브라우저(localStorage)에만</b> 저장되고 어디로도 따로 전송되지 않아요.
+      </p>
+      <div class="field-row">
+        <input id="api-key" type="password" inputmode="text" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="AIza... 붙여넣기" aria-label="Gemini API 키">
+        <button type="button" class="btn ghost" id="toggle-key" aria-label="키 보이기">보기</button>
+      </div>
+      <div class="row-actions">
+        <button type="button" class="btn primary" id="test-conn">연결 테스트</button>
+        <button type="button" class="btn" id="clear-key">키 삭제</button>
+      </div>
+      <p class="subtle" id="key-msg" role="status" style="margin-top:8px"></p>
+
+      <div class="field-group">
+        <div class="field-label"><span>모델</span><span class="subtle" id="model-current">gemini-2.5-flash-preview-tts</span></div>
+        <div class="seg" id="model-seg" role="group" aria-label="TTS 모델 선택"></div>
+        <div class="field-row">
+          <input id="model-custom" class="text-input" type="text" placeholder="직접 입력: 예) gemini-2.5-pro-preview-tts" aria-label="사용자 지정 모델 ID">
+          <button type="button" class="btn" id="model-apply">적용</button>
+        </div>
+        <p class="subtle" style="margin-top:6px" id="model-note">모델이 404로 막히면 「안정 · 무료 티어」로 바꾸거나 직접 입력해 보세요.</p>
+      </div>
+    </section>
+
+    <section class="panel" id="sec-voice" aria-labelledby="h-voice">
+      <div class="panel-head">
+        <h2 id="h-voice"><span class="ico" aria-hidden="true">🎚️</span> 화자 음색</h2>
+        <span class="pill" id="voice-pill">Orus</span>
+      </div>
+      <p class="hint">전체 장면에 같은 화자를 씁니다. 생존 일지 내레이션엔 <b>Orus · Alnilam</b>이 가장 잘 맞았어요.</p>
+      <div class="voice-list" id="voice-list" role="radiogroup" aria-label="화자 음색"></div>
+    </section>
+
+    <section class="panel" id="sec-pace" aria-labelledby="h-pace">
+      <div class="panel-head">
+        <h2 id="h-pace"><span class="ico" aria-hidden="true">⏱️</span> 속도 및 호흡 설정</h2>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label"><span>음역대 미세 보정</span></div>
+        <div class="seg" id="range-seg" role="group" aria-label="음역대 미세 보정"></div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label"><span>말하기 속도</span></div>
+        <div class="seg" id="speed-seg" role="group" aria-label="말하기 속도"></div>
+      </div>
+
+      <div class="field-group">
+        <div class="field-label"><span>장면 전환 호흡 간격</span><b id="gap-value">650ms</b></div>
+        <div class="slider-wrap">
+          <input id="gap-range" type="range" min="0" max="900" step="50" value="650" aria-label="장면 전환 호흡 간격(밀리초)">
+          <div class="slider-ticks"><span>0ms</span><span>350ms</span><span>900ms</span></div>
+        </div>
+        <p class="subtle">지시문에 반영되고, 전체 WAV를 합칠 때 장면 사이 실제 무음으로도 들어갑니다.</p>
+      </div>
+    </section>
+
+    <section class="panel" id="sec-prompt" aria-labelledby="h-prompt">
+      <div class="panel-head">
+        <h2 id="h-prompt"><span class="ico" aria-hidden="true">📜</span> 고정 발성 지시문</h2>
+        <button type="button" class="btn sm ghost" id="reset-prompt">원본으로 초기화</button>
+      </div>
+      <p class="hint">모든 장면 요청에 그대로 들어가는 기본 지시문입니다. 원하는 말투가 있으면 직접 고쳐 쓰세요.</p>
+      <div class="prompt-box">
+        <textarea id="prompt-text" spellcheck="false" aria-label="고정 발성 지시문"></textarea>
+      </div>
+      <div class="prompt-meta">
+        <span class="subtle mono" id="prompt-count">0자</span>
+        <span class="subtle" id="prompt-state">원본</span>
+      </div>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="panel" id="sec-samples" aria-labelledby="h-samples">
+      <div class="panel-head">
+        <h2 id="h-samples"><span class="ico" aria-hidden="true">🎬</span> 생존 일지 샘플 불러오기</h2>
+      </div>
+      <p class="hint">목소리를 먼저 확인하고 싶을 때. 누르면 장면 대본이 바로 채워져요.</p>
+      <div class="sample-list" id="sample-list"></div>
+    </section>
+
+    <section class="panel" id="sec-script" aria-labelledby="h-script">
+      <div class="panel-head">
+        <h2 id="h-script"><span class="ico" aria-hidden="true">📝</span> 장면 대본 워크벤치</h2>
+        <span class="pill" id="scene-pill">0장면</span>
+      </div>
+      <div class="wb-toolbar">
+        <button type="button" class="btn sm" id="add-scene">＋ 장면 추가</button>
+        <button type="button" class="btn sm" id="open-split">통대본 자동 나누기</button>
+        <button type="button" class="btn sm ghost" id="clear-scenes">전체 비우기</button>
+      </div>
+      <div class="wb-summary" id="wb-summary"></div>
+      <div class="scene-list" id="scene-list"></div>
+      <div class="empty" id="scene-empty">
+        아직 장면이 없어요.<br>위의 샘플을 불러오거나 「＋ 장면 추가」로 시작하세요.
+      </div>
+      <div class="row-actions">
+        <button type="button" class="btn primary" id="generate-all">모든 장면 음성 생성</button>
+        <button type="button" class="btn" id="cancel-all" hidden>생성 중지</button>
+      </div>
+      <div class="progress" style="margin-top:10px" id="gen-progress" hidden><i></i></div>
+      <p class="subtle" id="gen-msg" style="margin-top:7px"></p>
+    </section>
+  </div>
+</main>
+
+<!-- 오디오 모니터 -->
+<section class="monitor" id="monitor" aria-label="오디오 모니터">
+  <div class="monitor-inner">
+    <div class="mon-head">
+      <span class="dot" id="mon-dot" aria-hidden="true"></span>
+      <span class="mon-title" id="mon-title">오디오 모니터 대기 중</span>
+      <span class="mon-sub" id="mon-sub">장면 0개</span>
+    </div>
+    <div class="mon-wave" id="mon-wave">
+      <canvas id="mon-canvas" width="900" height="92" aria-hidden="true"></canvas>
+      <div class="idle" id="mon-idle">장면을 생성하면 여기에 파형이 그려집니다</div>
+    </div>
+    <div class="mon-controls">
+      <button type="button" class="btn primary sm mon-cta" id="mon-play" disabled>▶ 재생</button>
+      <button type="button" class="btn sm" id="mon-download" disabled>WAV</button>
+      <button type="button" class="btn sm primary" id="mon-merge">전체 합쳐서 WAV</button>
+      <span class="spacer"></span>
+      <span class="mon-sub mono" id="mon-time">0:00</span>
+    </div>
+    <p class="mon-hint" id="mon-hint">전환 무음 650ms · 생성된 장면 0/0</p>
+  </div>
+</section>
+
+<div id="sheet-root"></div>
+<div id="toast-root"></div>
+
+<script type="module" src="./js/app.js"></script>
+</body>
+</html>

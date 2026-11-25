@@ -1,0 +1,26 @@
+{
+  "name": "하기 로그 내레이션 스튜디오",
+  "short_name": "내레이션",
+  "description": "하기 로그 생존 일지 내레이션을 장면 단위로 만들어 WAV로 내려받는 개인용 TTS 스튜디오",
+  "lang": "ko",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#07080a",
+  "theme_color": "#07080a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "./icons/icon-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    }
+  ]
+}
