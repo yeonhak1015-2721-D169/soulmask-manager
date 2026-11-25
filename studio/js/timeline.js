@@ -11,6 +11,8 @@
  *
  * 지원: [00:00 ~ 00:10] / [00:00 - 00:10] / [0:00~0:10] / [00:00～00:10]
  *       [01:02:03 ~ 01:02:15] / [00:15] (단일 시점)
+ *       **[00:20 ~ 00:36]** / *[00:20 ~ 00:36]* / __[00:20 ~ 00:36]__ /
+ *       ## [00:20 ~ 00:36] (Markdown 볼드·기울임·제목으로 감싼 표기)
  *
  * 가장 중요한 규칙: 구간 표기는 읽을 대본에서 반드시 제거한다.
  * (Gemini TTS가 "00:00 ~ 00:10"을 소리 내어 읽지 않도록)
@@ -21,12 +23,22 @@
 
 const TIME_PATTERN = '\\d{1,3}(?::\\d{1,2}){1,2}(?:[.,]\\d{1,3})?';
 const DASH_PATTERN = '-->|→|->|[-~–—−〜～]';
+/* 구간 표기를 감싸는 Markdown 표기: **볼드**, __볼드__, *기울임*, _기울임_, ## 제목 */
+const WRAP_PATTERN = '\\*\\*|__|\\*|_|#{1,6}';
 const HEADER_RE = new RegExp(
-  `^\\s*[\\[【]\\s*(${TIME_PATTERN})\\s*(?:(?:${DASH_PATTERN})\\s*(${TIME_PATTERN}))?\\s*[\\]】]\\s*(.*)$`,
+  `^\\s*(?:(?<wrap>${WRAP_PATTERN})[ \\t]*){0,3}[\\[【]\\s*(?<start>${TIME_PATTERN})\\s*` +
+    `(?:(?:${DASH_PATTERN})\\s*(?<end>${TIME_PATTERN}))?\\s*[\\]】][ \\t]*(?:\\k<wrap>)?[ \\t]*(?<rest>.*)$`,
 );
-const INLINE_TAG_RE = new RegExp(`[\\[【]\\s*${TIME_PATTERN}\\s*(?:(?:${DASH_PATTERN})\\s*${TIME_PATTERN})?\\s*[\\]】]`, 'g');
-/* 구간 표기처럼 보이지만 시각을 못 읽는 줄(예: [00:xx ~ 00:10])을 걸러내기 위한 후보 패턴. */
-const CANDIDATE_RE = /^\s*[\[【]\s*([^\]】\n]{1,32}?)\s*[\]】]\s*(.*)$/;
+/* 본문에 남은 표기도 감싼 Markdown 표기째로 지운다(같은 기호로 닫혔을 때만). */
+const INLINE_TAG_RE = new RegExp(
+  `(${WRAP_PATTERN})?[\\[【]\\s*${TIME_PATTERN}\\s*(?:(?:${DASH_PATTERN})\\s*${TIME_PATTERN})?\\s*[\\]】](?:\\1)?`,
+  'g',
+);
+/* 구간 표기처럼 보이지만 시각을 못 읽는 줄(예: [00:xx ~ 00:10], **[00:xx ~ 00:10]**)을 걸러내기 위한 후보 패턴. */
+const CANDIDATE_RE = new RegExp(
+  `^\\s*(?:(?<cwrap>${WRAP_PATTERN})[ \\t]*){0,3}[\\[【]\\s*(?<inner>[^\\]】\\n]{1,32}?)\\s*[\\]】][ \\t]*` +
+    `(?:\\k<cwrap>)?[ \\t]*(?<crest>.*)$`,
+);
 const looksLikeTimeTag = (inner) => /\d/.test(inner) && /[:：]/.test(inner);
 
 const pad2 = (n) => String(n).padStart(2, '0');
@@ -105,6 +117,8 @@ function tidyBody(lines) {
   const raw = stripTimecodeTags(lines.join('\n'))
     .split('\n')
     .map((line) => line.replace(/[ \t]+$/g, '').replace(/^[ \t]+/g, ''))
+    // 구간 표기만 지우고 남은 Markdown 기호뿐인 줄(** **, ## 등)은 소리 내어 읽을 게 없으니 버린다.
+    .filter((line) => !/^[*_#][*_#\s]*$/.test(line))
     .join('\n');
   return raw
     .replace(/\n{3,}/g, '\n\n')
@@ -140,16 +154,17 @@ export function parseTimelineText(rawText) {
     const match = line.match(HEADER_RE);
     if (match) {
       headerCount += 1;
-      const startSec = parseTimecode(match[1]);
-      let endSec = match[2] ? parseTimecode(match[2]) : null;
+      const { wrap, start, end, rest } = match.groups;
+      const startSec = parseTimecode(start);
+      let endSec = end ? parseTimecode(end) : null;
       if (startSec === null) {
-        warnings.push(`${lineIndex + 1}행: 「${match[1]}」 시작 시각을 읽지 못해 건너뛰었어요.`);
+        warnings.push(`${lineIndex + 1}행: 「${start}」 시작 시각을 읽지 못해 건너뛰었어요.`);
         current = null;
         return;
       }
       if (endSec !== null && endSec <= startSec) {
         warnings.push(
-          `${lineIndex + 1}행: 끝(${match[2]})이 시작(${match[1]})보다 빠르거나 같아 단일 시점으로 처리했어요.`,
+          `${lineIndex + 1}행: 끝(${end})이 시작(${start})보다 빠르거나 같아 단일 시점으로 처리했어요.`,
         );
         endSec = null;
       }
@@ -160,16 +175,20 @@ export function parseTimelineText(rawText) {
         body: [],
         line: lineIndex + 1,
       };
-      const inline = (match[3] || '').trim();
+      let inline = (rest || '').trim();
+      // **\[00:00 ~ 00:10\] 대사** 처럼 감싼 표기가 줄 끝까지 이어지면 닫는 기호도 걷어낸다.
+      if (wrap && inline.endsWith(wrap)) inline = inline.slice(0, -wrap.length).trim();
       if (inline) current.body.push(inline);
       scenes.push(current);
       return;
     }
     const candidate = line.match(CANDIDATE_RE);
-    if (candidate && looksLikeTimeTag(candidate[1])) {
+    if (candidate && looksLikeTimeTag(candidate.groups.inner)) {
       // 시각을 읽지 못한 구간 표기는 본문에서 제거한다(그대로 읽히면 안 되므로).
-      warnings.push(`${lineIndex + 1}행: 「[${candidate[1]}]」 구간 표기의 시작 시각을 읽지 못해 그 표기만 지웠어요.`);
-      const rest = (candidate[2] || '').trim();
+      warnings.push(
+        `${lineIndex + 1}행: 「[${candidate.groups.inner}]」 구간 표기의 시작 시각을 읽지 못해 그 표기만 지웠어요.`,
+      );
+      const rest = (candidate.groups.crest || '').trim();
       if (rest) {
         if (current) current.body.push(rest);
         else preamble.push(rest);

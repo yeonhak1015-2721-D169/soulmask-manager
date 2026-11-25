@@ -2,7 +2,7 @@
  * 타임라인 대본 파서 + 타임라인 싱크 WAV 합치기 자동 검증.
  * 사용: node scripts/test-timeline.mjs   (앱 폴더 기준)
  */
-import { readFileSync, writeFileSync, mkdtempSync } from 'node:fs';
+import { readFileSync, writeFileSync, mkdtempSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -140,6 +140,84 @@ group('3. 유연한 구간 표기');
   check('화살표 구간 [00:00 --> 00:10]',
     arrow.scenes.length === 1 && arrow.scenes[0].startSec === 0 && arrow.scenes[0].endSec === 10,
     arrow.scenes.length ? `${arrow.scenes[0].startSec}~${arrow.scenes[0].endSec}` : 'none');
+}
+
+/* 3-1. Markdown(**볼드** 등)으로 감싼 구간 표기 */
+group('3-1. Markdown 감싼 구간 표기');
+{
+  const wrapped = [
+    ['**[00:20 ~ 00:36]**', 20, 36],
+    ['*[00:00 ~ 00:10]*', 0, 10],
+    ['__[00:00 ~ 00:10]__', 0, 10],
+    ['_[00:00 ~ 00:10]_', 0, 10],
+    ['## [00:00 ~ 00:10]', 0, 10],
+    ['# **[00:00 ~ 00:10]**', 0, 10],
+    ['  ** [ 00:00~00:10 ] **  ', 0, 10],
+    ['**[01:02:03 ~ 01:02:15]**', 3723, 3735],
+  ];
+  wrapped.forEach(([text, start, end]) => {
+    const result = tl.parseTimelineText(`${text}\n본문 대사`);
+    const scene = result.scenes[0];
+    check(`「${text.trim()}」 파싱`,
+      Boolean(scene) && scene.startSec === start && scene.endSec === end,
+      scene ? `${scene.startSec}~${scene.endSec}` : 'none');
+    check(`「${text.trim()}」 본문은 '본문 대사'`, scene && scene.text === '본문 대사', scene && scene.text);
+    check(`「${text.trim()}」 표기 흔적·경고 없음`,
+      scene && !/[*_#]/.test(scene.text) && result.warnings.length === 0,
+      result.warnings);
+  });
+
+  const boldSingle = tl.parseTimelineText('**[00:15]**\n한 줄');
+  check('볼드 단일 시점 startSec 15', boldSingle.scenes[0].startSec === 15 && boldSingle.scenes[0].endSec === null);
+  check('볼드 단일 시점 label = 00:15', boldSingle.scenes[0].timelineLabel === '00:15');
+
+  const inlineAfter = tl.parseTimelineText('**[00:20 ~ 00:36]** 같은 줄 대사');
+  check('볼드 표기 뒤 같은 줄 대사도 본문으로', inlineAfter.scenes[0].text === '같은 줄 대사', inlineAfter.scenes[0].text);
+
+  const boldSpan = tl.parseTimelineText('**[00:20 ~ 00:36] 같은 줄 대사**');
+  check('표기와 대사를 함께 감싼 볼드도 정리', boldSpan.scenes[0].text === '같은 줄 대사', boldSpan.scenes[0].text);
+
+  const keepInlineBold = tl.parseTimelineText('[00:00 ~ 00:10] **중요** 대사');
+  check('구간 뒤 본문의 볼드는 그대로', keepInlineBold.scenes[0].text === '**중요** 대사', keepInlineBold.scenes[0].text);
+
+  const bodyBoldTag = tl.parseTimelineText('[00:00 ~ 00:10]\n앞 대사 **[00:05 ~ 00:06]** 뒤 대사');
+  check('본문 속 볼드 구간 표기는 기호째 제거',
+    bodyBoldTag.scenes[0].text === '앞 대사   뒤 대사', JSON.stringify(bodyBoldTag.scenes[0].text));
+
+  const boldBroken = tl.parseTimelineText('[00:00 ~ 00:10]\n앞 대사\n**[00:xx ~ 00:10]**\n뒤 대사');
+  check('볼드 망가진 표기도 경고', boldBroken.warnings.some((w) => w.includes('읽지 못해')), boldBroken.warnings);
+  check('볼드 망가진 표기는 본문에서 제거',
+    boldBroken.scenes[0].text === '앞 대사\n뒤 대사', JSON.stringify(boldBroken.scenes[0].text));
+
+  const normalAgain = tl.parseTimelineText('**[00:00 ~ 00:10]**\n[웃음] 그냥 웃었다');
+  check('볼드 표기 뒤 일반 대괄호 표기는 보존', normalAgain.scenes[0].text === '[웃음] 그냥 웃었다', normalAgain.scenes[0].text);
+
+  const boldPlain = tl.parseTimelineText('**굵게** 그냥 대사입니다.\n[웃음] 웃었다');
+  check('구간 없는 볼드 대사는 건드리지 않음', boldPlain.hasTimeline === false && boldPlain.preambleText.includes('**굵게**'), boldPlain.preambleText);
+}
+
+/* 3-2. 실제 대본 파일 (볼드 표기 29구간) */
+group('3-2. 실제 대본 파일');
+{
+  const samplePath = join(here, '..', '..', 'attachments', '2026-11-26', 'pasted_content_2-e4bc5f4567be4f32b9d9eb2374f0f173.txt');
+  const exists = existsSync(samplePath);
+  if (!exists) {
+    console.log('  · 대본 예시 파일이 없어 이 검사는 건너뜁니다.');
+  } else {
+    const result = tl.parseTimelineText(readFileSync(samplePath, 'utf8'));
+    const spoken = result.scenes.map((scene) => scene.text).join('\n');
+    check('실제 대본 29구간', result.scenes.length === 29, result.scenes.length);
+    check('실제 대본 headerCount 29', result.headerCount === 29, result.headerCount);
+    check('실제 대본 경고 0개', result.warnings.length === 0, result.warnings);
+    check('실제 대본 빈 장면 없음', result.scenes.every((scene) => scene.text.trim()), '');
+    check('실제 대본에 ** 없음', !spoken.includes('**'), (spoken.match(/\*\*/g) || []).length);
+    check('실제 대본 본문에 구간 표기 없음', !/\[\s*\d{1,2}:\d{2}/.test(spoken));
+    check('실제 대본 첫 구간 = 00:20 ~ 00:36', result.scenes[0].timelineLabel === '00:20 ~ 00:36', result.scenes[0].timelineLabel);
+    check('실제 대본 마지막 구간 = 13:24 ~ 13:45',
+      result.scenes[28].timelineLabel === '13:24 ~ 13:45' && result.scenes[28].startSec === 804 && result.scenes[28].endSec === 825,
+      result.scenes[28].timelineLabel);
+    check('실제 대본 전체 구간 = 20~825초', result.spanStartSec === 20 && result.spanEndSec === 825);
+  }
 }
 
 /* 4. CRLF / BOM */

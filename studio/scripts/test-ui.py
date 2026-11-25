@@ -42,6 +42,26 @@ TIMELINE_TXT = (
 TXT_PATH = TMP / 'timeline-script.txt'
 TXT_PATH.write_text(TIMELINE_TXT, encoding='utf-8')
 
+# 실제 대본처럼 구간 표기를 **볼드**로 감싼 형식(사용자 2026-11-26 대본과 같은 모양)
+TIMELINE_BOLD_TXT = (
+    '**[00:20 ~ 00:36]**\r\n'
+    '\r\n'
+    '나는 생존게임 마니아 하기다.\r\n'
+    '소울마스크 생존 4일 차가 시작됐다.\r\n'
+    '\r\n'
+    '**[00:37 ~ 01:05]**\r\n'
+    '\r\n'
+    '우선 거점 주변부터 탐색했다.\r\n'
+    '오늘은 서부 우림 전역을 탐험할 예정이다.\r\n'
+    '\r\n'
+    '**[01:06 ~ 01:37]**\r\n'
+    '\r\n'
+    '주변을 돌아다니다 칠면조 어미와 새끼를 발견했다.\r\n'
+    '우선 어미부터 처치했다.\r\n'
+)
+BOLD_PATH = TMP / 'timeline-bold.txt'
+BOLD_PATH.write_text(TIMELINE_BOLD_TXT, encoding='utf-8')
+
 results = []
 console_errors = []
 page_errors = []
@@ -482,6 +502,42 @@ def main():
         page.click('.scene:last-child [data-act="del"]')
         page.wait_for_timeout(200)
         check('장면 삭제 후 3장면', scene_count(page) == 3, scene_count(page))
+
+        # 13k. **볼드**로 감싼 구간 표기 대본 (실제 사용자 대본 형식)
+        page.set_input_files('#txt-file', str(BOLD_PATH))
+        ok = wait_until(page, lambda: page.locator('#sheet-root .sheet').count() == 1, 3000)
+        check('볼드 대본 → 나누기 시트 열림', ok)
+        preview = page.locator('#split-preview').inner_text()
+        check('볼드 대본 미리보기 3장면', '3장면' in preview, preview)
+        check('볼드 대본 미리보기 구간 00:20~01:37', '00:20~01:37' in preview, preview)
+        check('볼드 대본은 경고 없음', page.locator('#split-warn').is_hidden(),
+              page.locator('#split-warn').inner_text())
+        page.click('#split-replace')
+        page.wait_for_timeout(500)
+        check('볼드 대본 3장면으로 교체', scene_count(page) == 3, scene_count(page))
+        bold_badges = page.eval_on_selector_all('.scene [data-role="tl-label"]',
+                                                'els => els.map(e => e.textContent.trim())')
+        check('볼드 첫 장면 배지: ⏱ 00:20 ~ 00:36 · 목표 16.0초',
+              bold_badges[0] == '⏱ 00:20 ~ 00:36 · 목표 16.0초', bold_badges[:1])
+        bold_texts = page.eval_on_selector_all('.scene textarea', 'els => els.map(e => e.value)')
+        check('볼드 기호가 대본에 남지 않음', all('*' not in t for t in bold_texts), bold_texts[:1])
+        check('볼드 구간 표기가 대본에 남지 않음',
+              all('00:20' not in t and '00:36' not in t and '[' not in t for t in bold_texts), bold_texts[:1])
+        check('볼드 대본 본문은 그대로',
+              bold_texts[0] == '나는 생존게임 마니아 하기다.\n소울마스크 생존 4일 차가 시작됐다.', repr(bold_texts[0]))
+        check('볼드 대본 요약에 범위 00:20~01:37', '00:20~01:37' in page.locator('#wb-summary').inner_text(),
+              page.locator('#wb-summary').inner_text())
+        no_overflow(page, '390px 볼드 대본')
+        request_log.clear()
+        page.click('#generate-all')
+        ok = wait_until(page, lambda: statuses(page) == ['완료', '완료', '완료'], 20000)
+        check('볼드 대본 3장면 생성', ok, statuses(page))
+        sent = [json.dumps(body, ensure_ascii=False) for body in request_log]
+        check('볼드 요청 본문에 ** 없음', all('**' not in body for body in sent),
+              [body for body in sent if '**' in body][:1])
+        check('볼드 요청 본문에 구간 표기 없음',
+              all('00:20' not in body and '00:36' not in body for body in sent), sent[-1][:120])
+        page.screenshot(path=str(OUT / 'studio-timeline-bold-390.png'), full_page=True)
 
         # 14. 데스크톱 레이아웃
         desktop = ctx.new_page()
