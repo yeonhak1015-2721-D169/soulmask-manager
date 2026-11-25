@@ -136,10 +136,13 @@
       </div>
       <div class="wb-toolbar">
         <button type="button" class="btn sm" id="add-scene">＋ 장면 추가</button>
+        <button type="button" class="btn sm" id="load-txt">📄 타임라인 .txt 불러오기</button>
         <button type="button" class="btn sm" id="open-split">통대본 자동 나누기</button>
         <button type="button" class="btn sm ghost" id="clear-scenes">전체 비우기</button>
+        <input type="file" id="txt-file" accept=".txt,text/plain" hidden>
       </div>
       <div class="wb-summary" id="wb-summary"></div>
+      <p class="tl-report" id="tl-report" hidden></p>
       <div class="scene-list" id="scene-list"></div>
       <div class="empty" id="scene-empty">
         아직 장면이 없어요.<br>위의 샘플을 불러오거나 「＋ 장면 추가」로 시작하세요.
@@ -172,6 +175,7 @@
       <button type="button" class="btn sm primary" id="mon-merge">전체 합쳐서 WAV</button>
       <span class="spacer"></span>
       <span class="mon-sub mono" id="mon-time">0:00</span>
+      <button type="button" class="btn sm" id="mon-sync" hidden>⏱ 타임라인 WAV</button>
     </div>
     <p class="mon-hint" id="mon-hint">전환 무음 650ms · 생성된 장면 0/0</p>
   </div>

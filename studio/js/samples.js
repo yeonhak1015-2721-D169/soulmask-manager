@@ -60,12 +60,22 @@ export const SAMPLES = [
 ];
 
 export function makeScene(source = {}) {
-  return {
+  const scene = {
     id: `sc_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 7)}`,
     title: source.title || '',
     mood: source.mood || 'daily',
     text: source.text || '',
   };
+  // 타임라인 .txt에서 온 장면이면 구간을 함께 보관한다(대본 본문에는 표기를 넣지 않는다).
+  if (Number.isFinite(Number(source.startSec)) && source.startSec !== null && source.startSec !== undefined) {
+    scene.startSec = Math.max(0, Number(source.startSec));
+    scene.endSec = Number.isFinite(Number(source.endSec)) && source.endSec !== null ? Number(source.endSec) : null;
+    scene.timelineLabel =
+      typeof source.timelineLabel === 'string' && source.timelineLabel
+        ? source.timelineLabel
+        : null;
+  }
+  return scene;
 }
 
 export function scenesFromSample(sample) {

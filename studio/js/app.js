@@ -21,11 +21,21 @@ import {
   CANONICAL_FORMAT,
   decodeInlineAudio,
   concatTracks,
+  buildTimelineTrack,
   encodeWav,
   int16ToBytes,
   buildPeaks,
   formatDuration,
 } from './wav.js';
+import {
+  parseTimelineText,
+  formatTimecode,
+  formatTimelineLabel,
+  timelineFilePart,
+  targetDurationSec,
+  hasTimeline,
+  compareDuration,
+} from './timeline.js';
 
 const STORAGE_KEY = 'hagi-narration-studio:v1';
 const $ = (sel, root = document) => root.querySelector(sel);
@@ -72,7 +82,15 @@ function saveNow() {
         speed: state.speed,
         gap: state.gap,
         prompt: state.prompt,
-        scenes: state.scenes.map(({ id, title, mood, text }) => ({ id, title, mood, text })),
+        scenes: state.scenes.map(({ id, title, mood, text, timelineLabel, startSec, endSec }) => ({
+          id,
+          title,
+          mood,
+          text,
+          ...(Number.isFinite(startSec)
+            ? { timelineLabel: timelineLabel || null, startSec, endSec: Number.isFinite(endSec) ? endSec : null }
+            : {}),
+        })),
       }),
     );
   } catch (error) {
@@ -105,6 +123,9 @@ function loadState() {
           title: typeof scene.title === 'string' ? scene.title : '',
           mood: MOODS.some((m) => m.id === scene.mood) ? scene.mood : 'daily',
           text: typeof scene.text === 'string' ? scene.text : '',
+          startSec: Number.isFinite(scene.startSec) ? scene.startSec : null,
+          endSec: Number.isFinite(scene.endSec) ? scene.endSec : null,
+          timelineLabel: typeof scene.timelineLabel === 'string' ? scene.timelineLabel : null,
         });
         if (typeof scene.id === 'string' && scene.id) built.id = scene.id;
         return built;
@@ -327,6 +348,16 @@ function sceneStatus(scene) {
   return { label: '대기', cls: '', dot: '#6c7789' };
 }
 
+function sceneTimelineHtml(scene) {
+  if (!hasTimeline(scene)) return '';
+  const target = targetDurationSec(scene);
+  const span = formatTimelineLabel(scene.startSec, scene.endSec);
+  return `<div class="scene-tl">
+        <span class="tl-chip" data-role="tl-label">⏱ ${escapeHtml(span)}${target === null ? '' : ` · 목표 ${target.toFixed(1)}초`}</span>
+        <span class="tl-fit" data-role="tl-fit" hidden></span>
+      </div>`;
+}
+
 function sceneCardHtml(scene, index) {
   const status = sceneStatus(scene);
   return `<article class="scene" data-id="${scene.id}" data-active="${currentSceneId === scene.id}">
@@ -351,6 +382,7 @@ function sceneCardHtml(scene, index) {
         <span class="sep">·</span>
         <span data-role="mood-label">${moodLabel(scene.mood)}</span>
       </div>
+      ${sceneTimelineHtml(scene)}
       <textarea data-field="text" rows="4" placeholder="이 장면에서 읽을 대본을 적으세요. 빈 줄로 문단을 나누면 호흡이 자연스러워집니다." aria-label="${index + 1}번 장면 대본">${escapeHtml(scene.text)}</textarea>
       <div class="scene-foot">
         <button type="button" class="btn sm" data-act="play">▶ 듣기</button>
@@ -416,6 +448,14 @@ function renderSummary() {
     `생성 <b>${done}/${state.scenes.length}</b>`,
   ];
   if (realSec > 0) parts.push(`실측 <b>${fmtSeconds(realSec + gaps)}</b>`);
+  const timed = state.scenes.filter((scene) => hasTimeline(scene));
+  if (timed.length) {
+    const first = Math.min(...timed.map((scene) => scene.startSec));
+    const last = Math.max(
+      ...timed.map((scene) => (Number.isFinite(scene.endSec) ? Math.max(scene.endSec, scene.startSec) : scene.startSec)),
+    );
+    parts.push(`타임라인 <b>${formatTimecode(first)}~${formatTimecode(last)}</b>`);
+  }
   $('#wb-summary').innerHTML = parts
     .map((part) => `<span class="m">${part}</span>`)
     .join('<span class="sep">·</span>');
@@ -453,6 +493,7 @@ function updateSceneCard(id) {
     durEl.textContent = fmtSeconds(estimateSeconds(scene.text, state.speed));
   }
   card.querySelector('[data-role="mood-label"]').textContent = moodLabel(scene.mood);
+  updateTimelineFit(scene, card);
   const playBtn = card.querySelector('[data-act="play"]');
   const wavBtn = card.querySelector('[data-act="wav"]');
   playBtn.disabled = !audio;
@@ -476,6 +517,25 @@ function refreshAllCards() {
   state.scenes.forEach((scene) => updateSceneCard(scene.id));
   renderSummary();
   renderMonitor();
+}
+
+/** 실제 생성 길이 vs 목표 구간을 장면 카드 배지로 보여 준다. */
+function updateTimelineFit(scene, card) {
+  const fit = card.querySelector('[data-role="tl-fit"]');
+  if (!fit) return;
+  const audio = audioStore.get(scene.id);
+  const target = targetDurationSec(scene);
+  const compare = audio && audio.duration ? compareDuration(audio.duration, target) : null;
+  if (!compare) {
+    fit.hidden = true;
+    fit.textContent = '';
+    fit.className = 'tl-fit';
+    return;
+  }
+  fit.textContent = compare.text;
+  fit.className = `tl-fit ${compare.tone}`;
+  fit.dataset.tone = compare.tone;
+  fit.hidden = false;
 }
 
 /* ---------- 장면 편집 이벤트 ---------- */
@@ -889,6 +949,18 @@ function renderMonitor() {
   $('#mon-dot').style.background = audio ? '#4ade80' : '#6c7789';
   $('#mon-merge').disabled = done === 0;
   $('#mon-merge').textContent = done > 1 ? '전체 합쳐서 WAV' : 'WAV 합치기';
+  const syncBtn = $('#mon-sync');
+  if (syncBtn) {
+    const timed = timelineScenes().length;
+    syncBtn.hidden = timed === 0;
+    syncBtn.disabled = done === 0;
+    syncBtn.textContent = timed ? `⏱ 타임라인 WAV (${timed})` : '⏱ 타임라인 WAV';
+  }
+  const hint = $('#mon-hint');
+  const span = timelineSpan();
+  hint.textContent = span
+    ? `타임라인 ${formatTimecode(span.first)}~${formatTimecode(span.last)} · 생성된 장면 ${done}/${state.scenes.length}`
+    : `전환 무음 ${state.gap}ms · 생성된 장면 ${done}/${state.scenes.length}`;
 }
 
 /* ---------- 파형 ---------- */
@@ -970,7 +1042,104 @@ function downloadSceneWav(scene) {
   const audio = audioStore.get(scene.id);
   if (!audio || !audio.blob) return;
   const index = String(state.scenes.indexOf(scene) + 1).padStart(2, '0');
-  download(audio.blob, `hagilog-${index}-${safeFileName(scene.title)}.wav`);
+  const part = timelineFilePart(scene.startSec, scene.endSec);
+  const name = part
+    ? `${index}_${part}.wav`
+    : `hagilog-${index}-${safeFileName(scene.title)}.wav`;
+  download(audio.blob, name);
+}
+
+/** 구간 장면이 있는지 / 몇 장면인지. */
+function timelineScenes() {
+  return state.scenes.filter((scene) => hasTimeline(scene));
+}
+
+/** 마지막 구간 끝(목표 영상 길이). */
+function timelineSpan() {
+  const timed = timelineScenes();
+  if (!timed.length) return null;
+  const first = Math.min(...timed.map((scene) => scene.startSec));
+  const last = Math.max(
+    ...timed.map((scene) => (Number.isFinite(scene.endSec) ? Math.max(scene.endSec, scene.startSec) : scene.startSec)),
+  );
+  return { first, last };
+}
+
+function missingAudioScenes() {
+  return state.scenes.filter((scene) => scene.text.trim() && !audioStore.get(scene.id));
+}
+
+/**
+ * ⏱ 타임라인 싱크 합치기 — 각 장면을 startSec 위치에 놓고 구간 사이를 무음으로 채운다.
+ * 앞 장면이 다음 구간을 넘으면 자르지 않고 그대로 이어 붙이고, 밀린 장면을 화면에 알린다.
+ */
+function exportTimelineWav() {
+  const timed = timelineScenes();
+  if (!timed.length) {
+    toast('구간이 있는 장면이 없어요. [00:00 ~ 00:10] 형식의 .txt를 불러오면 구간이 붙습니다.', {
+      error: true,
+      ms: 3600,
+    });
+    return;
+  }
+  const missing = missingAudioScenes();
+  if (missing.length) {
+    toast(`${missing.length}개 장면이 아직 생성되지 않았어요. 타임라인 합치기 전에 생성해 주세요.`, {
+      error: true,
+      ms: 3200,
+    });
+    return;
+  }
+  if (!audioStore.size) {
+    toast('먼저 장면 음성을 생성해 주세요.', { error: true });
+    return;
+  }
+
+  const items = state.scenes.map((scene, index) => {
+    const audio = audioStore.get(scene.id);
+    if (!audio) return null;
+    return {
+      samples: audio.samples,
+      startSec: hasTimeline(scene) ? scene.startSec : null,
+      index,
+    };
+  }).filter(Boolean);
+
+  const span = timelineSpan();
+  const result = buildTimelineTrack(items, { totalSec: span ? span.last : null });
+  const blob = new Blob([result.bytes], { type: 'audio/wav' });
+  download(blob, `hagilog-timeline-${stamp()}.wav`);
+
+  // 밀린 장면 안내: "밀린 장면 N개 · 2번 장면이 0:11보다 1.0초 늦게 시작"
+  const shifted = result.shifted.filter((segment) => segment.shiftedSec > 0.001);
+  const shiftedText = shifted
+    .slice(0, 3)
+    .map((segment) => {
+      const number = segment.index + 1;
+      const label = formatTimecode(segment.plannedStartSec);
+      return `${number}번 장면이 ${label}보다 ${segment.shiftedSec.toFixed(1)}초 늦게 시작`;
+    })
+    .join(' · ');
+
+  const report = $('#tl-report');
+  report.hidden = false;
+  report.innerHTML = `⏱ 타임라인 합치기 · 장면 <b>${items.length}</b>개 · 총 <b>${formatDuration(result.totalSec)}</b>${
+    span ? ` (0:00~${formatTimecode(span.last)})` : ''
+  }${
+    shifted.length
+      ? `<br><span class="warn-line">밀린 장면 ${shifted.length}개</span> — ${escapeHtml(shiftedText)}${
+          shifted.length > 3 ? ' …' : ''
+        }`
+      : '<br><span class="ok-line">모든 장면이 제 구간에 맞게 들어갔어요.</span>'
+  }`;
+
+  toast(
+    shifted.length
+      ? `타임라인 ${items.length}장면 · 총 ${formatDuration(result.totalSec)} · ${shifted.length}장면이 다음 구간을 넘어 밀렸어요`
+      : `타임라인 ${items.length}장면 · 총 ${formatDuration(result.totalSec)} 으로 합쳤어요`,
+    { ms: 4200, error: false },
+  );
+  report.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 }
 
 function mergeAll() {
@@ -979,7 +1148,7 @@ function mergeAll() {
     toast('먼저 장면 음성을 생성해 주세요.', { error: true });
     return;
   }
-  const missing = state.scenes.filter((scene) => scene.text.trim() && !audioStore.get(scene.id));
+  const missing = missingAudioScenes();
   if (missing.length) {
     toast(`${missing.length}개 장면이 아직 생성되지 않았어요. 합치기 전에 생성해 주세요.`, { error: true, ms: 3200 });
     return;
@@ -1028,7 +1197,17 @@ async function runConnectionTest() {
 
 /* ---------- 통대본 나누기 ---------- */
 
-function openSplitSheet() {
+function readTextFile(file) {
+  if (file && typeof file.text === 'function') return file.text();
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ''));
+    reader.onerror = () => reject(reader.error || new Error('파일을 읽지 못했어요.'));
+    reader.readAsText(file, 'utf-8');
+  });
+}
+
+function openSplitSheet({ text = '', mode: initialMode = null, fileName = '' } = {}) {
   const root = $('#sheet-root');
   root.innerHTML = `<div class="sheet-backdrop">
     <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="split-title">
@@ -1036,13 +1215,20 @@ function openSplitSheet() {
         <h3 id="split-title">통대본 자동 나누기</h3>
         <button type="button" class="tool-btn" data-close aria-label="닫기">✕</button>
       </div>
-      <p class="hint">에피소드 대본을 통째로 붙여넣으면 장면으로 나눠 담아요. 나뉜 장면은 워크벤치에서 제목·분위기를 다듬으면 됩니다.</p>
+      <p class="hint">에피소드 대본을 통째로 붙여넣거나 <b>[00:00 ~ 00:10]</b> 구간이 적힌 .txt를 불러오세요. 나뉜 장면은 워크벤치에서 제목·분위기를 다듬으면 됩니다.</p>
+      <div class="split-file-row">
+        <button type="button" class="btn sm ghost" id="split-file-btn">📄 타임라인 .txt 불러오기</button>
+        <span class="subtle" id="split-file-name">${escapeHtml(fileName)}</span>
+        <input type="file" id="split-file" accept=".txt,text/plain" hidden>
+      </div>
       <div class="split-opt" role="group" aria-label="나누는 기준">
+        <button type="button" data-mode="timeline" aria-pressed="false">⏱ 타임라인 구간</button>
         <button type="button" data-mode="blank" aria-pressed="true">빈 줄로 나누기</button>
         <button type="button" data-mode="line" aria-pressed="false">줄마다 나누기</button>
       </div>
-      <textarea id="split-input" rows="10" placeholder="예)&#10;폐허 도시 14일차.&#10;눈을 뜨자마자 물부터 확인한다.&#10;&#10;건물 사이를 천천히 훑는다.&#10;3층 창가에 뭔가 반짝여서 올라가 봤다."></textarea>
+      <textarea id="split-input" rows="10" placeholder="예)&#10;[00:00 ~ 00:10]&#10;나는 생존매니아, 하기다.&#10;소울마스크 8일차 생존을 시작했다.&#10;&#10;[00:11 ~ 00:30]&#10;거점부터 한바퀴 둘러봤다."></textarea>
       <p class="subtle" id="split-preview" style="margin-top:8px">0장면 · 0자</p>
+      <p class="split-warn" id="split-warn" hidden></p>
       <div class="sheet-actions">
         <button type="button" class="btn" data-close>취소</button>
         <button type="button" class="btn" id="split-append">뒤에 추가</button>
@@ -1054,30 +1240,101 @@ function openSplitSheet() {
   const backdrop = root.querySelector('.sheet-backdrop');
   const input = root.querySelector('#split-input');
   const preview = root.querySelector('#split-preview');
-  let mode = 'blank';
+  const warnEl = root.querySelector('#split-warn');
+  const fileNameEl = root.querySelector('#split-file-name');
+  const fileInput = root.querySelector('#split-file');
+  let mode = initialMode || 'blank';
+
+  const setMode = (next) => {
+    mode = next;
+    root.querySelectorAll('[data-mode]').forEach((btn) => {
+      btn.setAttribute('aria-pressed', String(btn.dataset.mode === mode));
+    });
+  };
 
   const split = () => {
-    const text = input.value.replace(/\r\n?/g, '\n');
-    const chunks =
-      mode === 'blank'
-        ? text.split(/\n\s*\n+/)
-        : text.split(/\n+/);
-    return chunks.map((chunk) => chunk.trim()).filter(Boolean);
+    const raw = input.value.replace(/\r\n?/g, '\n');
+    if (mode === 'timeline') {
+      const parsed = parseTimelineText(raw);
+      if (parsed.scenes.length) {
+        return { scenes: parsed.scenes, warnings: parsed.warnings, empty: false, parsed };
+      }
+      if (!raw.trim()) return { scenes: [], warnings: [], empty: true, parsed };
+      // 구간 표기가 없으면 빈 줄 나누기로 되돌린다.
+      const chunks = raw.split(/\n\s*\n+/).map((chunk) => chunk.trim()).filter(Boolean);
+      return {
+        scenes: chunks.map((chunk) => ({ text: chunk, timelineLabel: null, startSec: null, endSec: null })),
+        warnings: ['타임라인 구간 표기를 찾지 못해 빈 줄로 나눴어요.'],
+        empty: false,
+        parsed,
+      };
+    }
+    const chunks = mode === 'blank' ? raw.split(/\n\s*\n+/) : raw.split(/\n+/);
+    return {
+      scenes: chunks
+        .map((chunk) => chunk.trim())
+        .filter(Boolean)
+        .map((chunk) => ({ text: chunk, timelineLabel: null, startSec: null, endSec: null })),
+      warnings: [],
+      empty: true,
+      parsed: null,
+    };
   };
 
   const updatePreview = () => {
-    const scenes = split();
-    const chars = scenes.reduce((sum, s) => sum + countChars(s), 0);
-    preview.textContent = `${scenes.length}장면 · ${chars.toLocaleString('ko-KR')}자 · 예상 ${fmtSeconds(estimateSeconds(scenes.join(' '), state.speed))}`;
+    const result = split();
+    const scenes = result.scenes;
+    const chars = scenes.reduce((sum, scene) => sum + countChars(scene.text), 0);
+    const timed = scenes.filter((scene) => Number.isFinite(scene.startSec));
+    let line = `${scenes.length}장면 · ${chars.toLocaleString('ko-KR')}자 · 예상 ${fmtSeconds(
+      estimateSeconds(scenes.map((scene) => scene.text).join(' '), state.speed),
+    )}`;
+    if (timed.length) {
+      const first = Math.min(...timed.map((scene) => scene.startSec));
+      const last = Math.max(
+        ...timed.map((scene) => (Number.isFinite(scene.endSec) ? Math.max(scene.endSec, scene.startSec) : scene.startSec)),
+      );
+      line += ` · 타임라인 ${formatTimecode(first)}~${formatTimecode(last)} (${fmtSeconds(last - first)})`;
+    }
+    preview.textContent = line;
+    const warnings = result.warnings || [];
+    warnEl.hidden = warnings.length === 0;
+    warnEl.innerHTML = warnings.slice(0, 4).map((warning) => `⚠ ${escapeHtml(warning)}`).join('<br>');
   };
 
-  input.addEventListener('input', updatePreview);
+  const loadFile = async (file) => {
+    if (!file) return;
+    try {
+      const text = await readTextFile(file);
+      input.value = text;
+      fileNameEl.textContent = file.name;
+      const parsed = parseTimelineText(text);
+      if (parsed.hasTimeline) setMode('timeline');
+      updatePreview();
+      if (!parsed.hasTimeline) {
+        toast('구간 표기를 찾지 못했어요. [00:00 ~ 00:10] 형식이 있는지 확인해 주세요.', { error: true, ms: 3600 });
+      }
+    } catch (error) {
+      toast('파일을 읽지 못했어요. 다른 .txt로 다시 시도해 주세요.', { error: true });
+    }
+  };
+
+  input.addEventListener('input', () => {
+    const parsed = parseTimelineText(input.value);
+    if (parsed.hasTimeline && mode !== 'timeline') setMode('timeline');
+    else if (!parsed.hasTimeline && mode === 'timeline' && !input.value.trim()) setMode('blank');
+    updatePreview();
+  });
   root.querySelectorAll('[data-mode]').forEach((btn) => {
     btn.addEventListener('click', () => {
-      mode = btn.dataset.mode;
-      root.querySelectorAll('[data-mode]').forEach((b) => b.setAttribute('aria-pressed', String(b === btn)));
+      setMode(btn.dataset.mode);
       updatePreview();
     });
+  });
+  root.querySelector('#split-file-btn').addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', (event) => {
+    loadFile(event.target.files && event.target.files[0]);
+    event.target.value = '';
   });
 
   const close = () => {
@@ -1094,12 +1351,21 @@ function openSplitSheet() {
   });
 
   const insert = (replace) => {
-    const scenes = split();
+    const scenes = split().scenes;
     if (!scenes.length) {
       toast('나눌 내용이 없어요.', { error: true });
       return;
     }
-    const built = scenes.map((text, index) => makeScene({ title: `장면 ${index + 1}`, mood: 'daily', text }));
+    const built = scenes.map((scene, index) =>
+      makeScene({
+        title: `장면 ${index + 1}`,
+        mood: 'daily',
+        text: scene.text,
+        startSec: scene.startSec,
+        endSec: scene.endSec,
+        timelineLabel: scene.timelineLabel,
+      }),
+    );
     if (replace) {
       resetAudio();
       state.scenes = built;
@@ -1110,10 +1376,17 @@ function openSplitSheet() {
     renderScenes();
     saveNow();
     close();
-    toast(`${built.length}장면으로 나눴어요.`);
+    const timed = built.filter((scene) => hasTimeline(scene)).length;
+    toast(timed ? `${built.length}장면으로 나눴어요 · 구간 ${timed}개` : `${built.length}장면으로 나눴어요.`);
+    $('#sec-script').scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
   root.querySelector('#split-replace').addEventListener('click', () => insert(true));
   root.querySelector('#split-append').addEventListener('click', () => insert(false));
+
+  if (text) {
+    input.value = text;
+    if (parseTimelineText(text).hasTimeline) setMode('timeline');
+  }
   setTimeout(() => input.focus(), 60);
   updatePreview();
 }
@@ -1209,7 +1482,24 @@ function bindStatic() {
     saveNow();
   });
 
-  $('#open-split').addEventListener('click', openSplitSheet);
+  $('#open-split').addEventListener('click', () => openSplitSheet());
+  $('#load-txt').addEventListener('click', () => $('#txt-file').click());
+  $('#txt-file').addEventListener('change', async (event) => {
+    const input = event.target;
+    const file = input.files && input.files[0];
+    input.value = '';
+    if (!file) return;
+    try {
+      const text = await readTextFile(file);
+      if (!text.trim()) {
+        toast('파일이 비어 있어요.', { error: true });
+        return;
+      }
+      openSplitSheet({ text, mode: 'timeline', fileName: file.name });
+    } catch (error) {
+      toast('파일을 읽지 못했어요. 다른 .txt 파일로 다시 시도해 주세요.', { error: true });
+    }
+  });
   $('#generate-all').addEventListener('click', generateAll);
   $('#cancel-all').addEventListener('click', cancelGeneration);
 
@@ -1219,6 +1509,7 @@ function bindStatic() {
     if (scene) downloadSceneWav(scene);
   });
   $('#mon-merge').addEventListener('click', mergeAll);
+  $('#mon-sync').addEventListener('click', exportTimelineWav);
   $('#status-chip').addEventListener('click', () => {
     $('#sec-key').scrollIntoView({ behavior: 'smooth', block: 'start' });
     setTimeout(() => $('#api-key').focus(), 320);

@@ -111,7 +111,7 @@ a { color: var(--amber); text-underline-offset: 3px; }
 /* ---------- 레이아웃 ---------- */
 .layout {
   display: block;
-  padding: 14px 14px calc(198px + var(--safe-bottom));
+  padding: 14px 14px calc(246px + var(--safe-bottom));
   max-width: 1180px;
   margin: 0 auto;
 }
@@ -337,6 +337,62 @@ input[type="range"]::-moz-range-thumb {
 .scene-meta .st { display: inline-flex; align-items: center; gap: 4px; }
 .scene-meta .st .dot { width: 6px; height: 6px; }
 .scene-meta .dur-prefix { font-style: normal; }
+
+/* ---------- 타임라인 배지 ---------- */
+.scene-tl {
+  display: flex; flex-wrap: wrap; align-items: center; gap: 5px 7px;
+  margin-bottom: 7px;
+}
+.tl-chip {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 9px; border-radius: 999px;
+  border: 1px solid var(--amber-line);
+  background: var(--amber-soft);
+  color: #ffd79a; font-size: 11.5px; font-weight: 800;
+  font-variant-numeric: tabular-nums; letter-spacing: -.01em;
+  white-space: nowrap;
+}
+.tl-fit {
+  display: inline-flex; align-items: center;
+  padding: 3px 9px; border-radius: 999px;
+  border: 1px solid var(--line);
+  background: var(--surface-3);
+  color: var(--muted); font-size: 11px; font-weight: 700;
+  font-variant-numeric: tabular-nums; white-space: nowrap;
+}
+.tl-fit.fit {
+  border-color: rgba(74, 222, 128, .32);
+  background: rgba(74, 222, 128, .09);
+  color: #b7f7cf;
+}
+.tl-fit.over {
+  border-color: var(--amber-line);
+  background: var(--amber-soft);
+  color: #ffd79a;
+}
+.tl-fit.over-major {
+  border-color: rgba(248, 113, 113, .5);
+  background: rgba(248, 113, 113, .12);
+  color: #ffc0c0;
+}
+.tl-report {
+  margin-top: 9px; padding: 9px 11px;
+  border-radius: 10px;
+  border: 1px solid var(--line-soft);
+  background: #0b0f15;
+  font-size: 11.5px; line-height: 1.6; color: var(--muted);
+  word-break: keep-all;
+}
+.tl-report b { color: var(--text); font-variant-numeric: tabular-nums; }
+.tl-report .warn-line { color: #ffd79a; font-weight: 800; }
+.tl-report .ok-line { color: #b7f7cf; font-weight: 700; }
+.split-file-row { display: flex; align-items: center; gap: 8px; margin: 2px 0 4px; flex-wrap: wrap; }
+.split-file-row .subtle { overflow-wrap: anywhere; }
+.split-warn {
+  margin-top: 7px; padding: 8px 10px; border-radius: 9px;
+  border: 1px solid var(--amber-line); background: var(--amber-soft);
+  color: #ffd79a; font-size: 11.5px; line-height: 1.55; word-break: keep-all;
+}
 .scene textarea { min-height: 96px; max-height: 320px; font-size: 14px; line-height: 1.66; background: #0a0e14; overflow-y: hidden; }
 .scene-foot { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; align-items: center; }
 .scene-foot .grow { flex: 1 1 auto; }
@@ -374,9 +430,15 @@ input[type="range"]::-moz-range-thumb {
   position: absolute; inset: 0; display: grid; place-items: center;
   font-size: 11.5px; color: var(--muted-2); text-align: center; padding: 0 10px;
 }
-.mon-controls { display: flex; align-items: center; gap: 7px; margin-top: 7px; }
+.mon-controls { display: flex; align-items: center; gap: 7px; margin-top: 7px; flex-wrap: wrap; }
 .mon-controls .btn { min-height: 36px; }
-.mon-controls .spacer { flex: 1; }
+.mon-controls .spacer { flex: 1; min-width: 0; }
+#mon-sync {
+  flex: 1 1 auto;
+  border-color: var(--amber-line);
+  color: #ffd79a;
+  background: var(--amber-soft);
+}
 .mon-cta { min-height: 38px; }
 .mon-hint { margin-top: 5px; font-size: 10.5px; color: var(--muted-2); text-align: center; }
 .mon-tabs { display: flex; gap: 4px; margin-left: 4px; }
@@ -426,7 +488,7 @@ input[type="range"]::-moz-range-thumb {
 
 /* ---------- 토스트 ---------- */
 #toast-root {
-  position: fixed; left: 50%; bottom: calc(196px + var(--safe-bottom));
+  position: fixed; left: 50%; bottom: calc(212px + var(--safe-bottom));
   transform: translateX(-50%); z-index: 70;
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   width: max-content; max-width: calc(100% - 32px);
@@ -460,7 +522,8 @@ input[type="range"]::-moz-range-thumb {
   .panel { padding: 18px; border-radius: 18px; }
   .monitor { padding: 10px 24px 12px; }
   .mon-wave canvas { height: 54px; }
-  #toast-root { bottom: 176px; }
+  #mon-sync { flex: 0 0 auto; }
+  #toast-root { bottom: 186px; }
   .seg { flex-direction: row; flex-wrap: wrap; }
   .seg button { flex: 1 1 30%; text-align: center; }
   .scene textarea { min-height: 84px; }

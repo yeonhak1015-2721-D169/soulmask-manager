@@ -25,6 +25,22 @@ BASE = 'http://127.0.0.1:8099/index.html'
 ROOT = Path(__file__).resolve().parent.parent
 OUT = ROOT.parent / 'downloads'
 OUT.mkdir(exist_ok=True)
+TMP = ROOT.parent / 'tmp'
+TMP.mkdir(exist_ok=True)
+
+TIMELINE_TXT = (
+    '\ufeff[00:00 ~ 00:10]\r\n'
+    '나는 생존매니아, 하기다.\r\n'
+    '소울마스크 8일차 생존을 시작했다.\r\n'
+    '\r\n'
+    '[00:11 ~ 00:20]\r\n'
+    '거점부터 한바퀴 둘러봤다.\r\n'
+    '\r\n'
+    '[00:21 ~ 00:31]\r\n'
+    '여전히 평화롭고, 부족원들은 여유롭다.\r\n'
+)
+TXT_PATH = TMP / 'timeline-script.txt'
+TXT_PATH.write_text(TIMELINE_TXT, encoding='utf-8')
 
 results = []
 console_errors = []
@@ -44,7 +60,7 @@ def tone_pcm_b64(seconds=1.0, rate=24000, freq=220.0, amp=9000):
 
 AUDIO_B64 = tone_pcm_b64()
 request_log = []
-mode = {'status': 'ok'}
+mode = {'status': 'ok', 'seconds': 1.0}
 
 
 def tts_handler(route):
@@ -73,7 +89,8 @@ def tts_handler(route):
     route.fulfill(status=200, headers=headers, body=json.dumps({
         'candidates': [{
             'content': {'parts': [{'inlineData': {
-                'mimeType': 'audio/L16;codec=pcm;rate=24000', 'data': AUDIO_B64,
+                'mimeType': 'audio/L16;codec=pcm;rate=24000',
+                'data': tone_pcm_b64(mode.get('seconds', 1.0)),
             }}], 'role': 'model'},
             'finishReason': 'STOP',
         }],
@@ -320,6 +337,147 @@ def main():
         part25 = request_log[-1]['contents'][0]['parts'][0]
         check('2.5: 지시문+대본 한 덩어리',
               ok and '[대본]' in part25['text'] and 'speechMetadata' not in part25, list(part25))
+
+        # 13d. 통대본 나누기 — 붙여넣은 타임라인 대본은 자동으로 구간 모드
+        page.click('#open-split')
+        page.wait_for_timeout(200)
+        page.fill('#split-input', '[00:00 ~ 00:05]\n첫 구간 대사\n\n[00:06 ~ 00:12]\n둘째 구간 대사')
+        page.wait_for_timeout(200)
+        check('타임라인 붙여넣기 → 구간 모드 자동 선택',
+              page.locator('#split-root [data-mode="timeline"][aria-pressed="true"]').count() == 1
+              or page.locator('#sheet-root [data-mode="timeline"]').get_attribute('aria-pressed') == 'true')
+        check('붙여넣기 미리보기 2장면', '2장면' in page.locator('#split-preview').inner_text(),
+              page.locator('#split-preview').inner_text())
+        check('붙여넣기 미리보기에 타임라인 범위', '00:00~00:12' in page.locator('#split-preview').inner_text(),
+              page.locator('#split-preview').inner_text())
+        page.click('#sheet-root [data-close]')
+        page.wait_for_timeout(200)
+        check('시트 닫힘', page.locator('#sheet-root .sheet').count() == 0)
+
+        # 13e. 타임라인 .txt 불러오기 (CRLF + BOM)
+        page.set_input_files('#txt-file', str(TXT_PATH))
+        ok = wait_until(page, lambda: page.locator('#sheet-root .sheet').count() == 1, 3000)
+        check('txt 업로드 → 나누기 시트 열림', ok)
+        check('txt 업로드 → 구간 모드 자동 선택',
+              page.locator('#sheet-root [data-mode="timeline"]').get_attribute('aria-pressed') == 'true')
+        preview = page.locator('#split-preview').inner_text()
+        check('txt 파일명 표시', 'timeline-script.txt' in page.locator('#split-file-name').inner_text(),
+              page.locator('#split-file-name').inner_text())
+        check('txt 미리보기 3장면', '3장면' in preview, preview)
+        check('txt 미리보기 타임라인 00:00~00:31 (31초)', '00:00~00:31' in preview and '31초' in preview, preview)
+        check('BOM·CRLF 처리로 경고 없음', page.locator('#split-warn').is_hidden(),
+              page.locator('#split-warn').inner_text())
+        no_overflow(page, '390px 타임라인 시트')
+        page.click('#split-replace')
+        page.wait_for_timeout(500)
+        check('타임라인 3장면으로 교체', scene_count(page) == 3, scene_count(page))
+        badges = page.eval_on_selector_all('.scene [data-role="tl-label"]', 'els => els.map(e => e.textContent.trim())')
+        check('구간 3개 모두 배지', len(badges) == 3, badges)
+        check('첫 장면 배지: ⏱ 00:00 ~ 00:10 · 목표 10.0초',
+              badges[0] == '⏱ 00:00 ~ 00:10 · 목표 10.0초', badges[:1])
+        check('둘째 장면 배지 목표 9.0초', '00:11 ~ 00:20' in badges[1] and '목표 9.0초' in badges[1], badges[1])
+        texts = page.eval_on_selector_all('.scene textarea', 'els => els.map(e => e.value)')
+        check('구간 표기가 대본에 남지 않음', all('00:00' not in t and '00:10' not in t and '[' not in t for t in texts), texts[:1])
+        check('대본 본문은 그대로', texts[0] == '나는 생존매니아, 하기다.\n소울마스크 8일차 생존을 시작했다.', repr(texts[0]))
+        summary = page.locator('#wb-summary').inner_text()
+        check('요약에 타임라인 범위', '00:00~00:31' in summary, summary)
+        check('모니터에 타임라인 WAV 버튼 표시', page.locator('#mon-sync').is_visible())
+        check('모니터 힌트에 타임라인', '00:00~00:31' in page.locator('#mon-hint').inner_text(),
+              page.locator('#mon-hint').inner_text())
+        no_overflow(page, '390px 타임라인 배지')
+
+        # 13f. 타임라인 장면 생성 → 길이 비교 배지 (1.0초 음성 vs 10초 구간)
+        request_log.clear()
+        page.click('#generate-all')
+        ok = wait_until(page, lambda: statuses(page) == ['완료', '완료', '완료'], 20000)
+        check('타임라인 3장면 모두 생성', ok, statuses(page))
+        check('요청 대본에 구간 표기 없음',
+              all('00:0' not in json.dumps(body, ensure_ascii=False) for body in request_log),
+              request_log[-1]['contents'][0]['parts'][0].get('text', '')[:80])
+        fits = page.eval_on_selector_all('.scene [data-role="tl-fit"]',
+                                         'els => els.map(e => ({t: e.textContent.trim(), tone: e.dataset.tone, hidden: e.hidden}))')
+        check('여유 표시: 생성 1.0초 (여유 9.0초)', fits[0]['t'] == '생성 1.0초 (여유 9.0초)', fits[0])
+        check('여유는 fit 색', fits[0]['tone'] == 'fit')
+        check('둘째 장면 여유 8.0초', fits[1]['t'] == '생성 1.0초 (여유 8.0초)', fits[1])
+        no_overflow(page, '390px 생성 후')
+        page.screenshot(path=str(OUT / 'studio-timeline-390.png'), full_page=True)
+
+        # 13g. 장면 WAV 파일 이름에 순번 + 구간
+        with page.expect_download() as dl:
+            page.click('.scene:first-child [data-act="wav"]')
+        d_scene = dl.value
+        check('장면 WAV 이름 = 01_00-00_00-10.wav', d_scene.suggested_filename == '01_00-00_00-10.wav',
+              d_scene.suggested_filename)
+        d_scene.save_as(OUT / 'studio-timeline-scene1.wav')
+        with wave.open(str(OUT / 'studio-timeline-scene1.wav')) as w:
+            check('장면 WAV 24kHz 모노 1초', w.getframerate() == 24000 and w.getnframes() == 24000)
+
+        # 13h. ⏱ 타임라인 싱크 합치기 — 0/11/21초 위치에 배치
+        with page.expect_download() as dl:
+            page.click('#mon-sync')
+        d_tl = dl.value
+        path_tl = OUT / 'studio-timeline-merged.wav'
+        d_tl.save_as(path_tl)
+        check('타임라인 WAV 파일 이름', d_tl.suggested_filename.startswith('hagilog-timeline-'), d_tl.suggested_filename)
+        with wave.open(str(path_tl)) as w:
+            frames = w.getnframes()
+            rate = w.getframerate()
+            data = w.readframes(frames)
+        check('타임라인 WAV 프레임 = 마지막 구간 끝 31초', abs(frames - 31 * rate) <= 2, f'{frames} vs {31 * rate}')
+        check('타임라인 WAV 24kHz 모노 16bit', rate == 24000)
+
+        def silent_between(buf, start_sec, end_sec, rate=24000):
+            a = int(start_sec * rate) * 2 + 200
+            b = int(end_sec * rate) * 2 - 200
+            return all(byte == 0 for byte in buf[a:b])
+
+        def has_sound(buf, at_sec, rate=24000):
+            a = int(at_sec * rate) * 2
+            return any(byte != 0 for byte in buf[a:a + 4000])
+
+        check('1~11초 구간은 무음', silent_between(data, 1.1, 10.9))
+        check('11초 지점에 둘째 음성', has_sound(data, 11))
+        check('20~21초 구간은 무음', silent_between(data, 20.1, 20.9))
+        check('21초 지점에 셋째 음성', has_sound(data, 21))
+        check('31초 이후는 없음(마지막 구간 끝까지)', len(data) == frames * 2)
+        report = page.locator('#tl-report').inner_text()
+        check('합치기 결과 안내 표시', '타임라인 합치기' in report and '총' in report, report)
+        check('밀린 장면 없음 안내', '모든 장면이 제 구간에 맞게' in report, report)
+
+        # 13i. 다음 구간을 넘치는 장면 → 초과 배지 + 밀림 안내
+        mode['seconds'] = 12.0
+        page.click('.scene:nth-child(2) [data-act="gen"]')
+        ok = wait_until(page, lambda: statuses(page)[1] == '완료', 15000)
+        check('12초 음성 생성', ok, statuses(page))
+        fit2 = page.locator('.scene:nth-child(2) [data-role="tl-fit"]')
+        check('초과 표시: 생성 12.0초 (+3.0초 초과)', fit2.inner_text().strip() == '생성 12.0초 (+3.0초 초과)',
+              fit2.inner_text())
+        check('초과는 over-major 색', fit2.get_attribute('data-tone') == 'over-major')
+        with page.expect_download() as dl:
+            page.click('#mon-sync')
+        path_over = OUT / 'studio-timeline-overrun.wav'
+        dl.value.save_as(path_over)
+        report = page.locator('#tl-report').inner_text()
+        check('밀린 장면 1개 안내', '밀린 장면 1개' in report, report)
+        check('밀린 장면 설명(3번 장면이 00:21보다 2.0초 늦게)',
+              '3번 장면이 00:21보다 2.0초 늦게' in report, report)
+        with wave.open(str(path_over)) as w:
+            over_frames = w.getnframes()
+            over_data = w.readframes(over_frames)
+        check('넘쳐도 음성은 잘리지 않음 (12초 지점 소리)', has_sound(over_data, 12))
+        check('타임라인 끝(31초)까지 유지', abs(over_frames - 31 * 24000) <= 2, over_frames)
+        no_overflow(page, '390px 밀린 장면 안내')
+        page.screenshot(path=str(OUT / 'studio-timeline-overrun-390.png'), full_page=True)
+        mode['seconds'] = 1.0
+
+        # 13j. 구간 없이 새로 만든 장면은 타임라인 합치기에서 이어 붙음
+        page.click('#add-scene')
+        page.fill('.scene:last-child textarea', '구간 없는 마지막 장면입니다.')
+        page.wait_for_timeout(150)
+        check('새 장면에는 구간 배지 없음', page.locator('.scene:last-child [data-role="tl-label"]').count() == 0)
+        page.click('.scene:last-child [data-act="del"]')
+        page.wait_for_timeout(200)
+        check('장면 삭제 후 3장면', scene_count(page) == 3, scene_count(page))
 
         # 14. 데스크톱 레이아웃
         desktop = ctx.new_page()

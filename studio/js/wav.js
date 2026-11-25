@@ -215,6 +215,70 @@ export function concatTracks(tracks, gapMs = 0) {
   return { bytes: encodeWav(int16ToBytes(merged), CANONICAL_FORMAT), totalSamples: total, gapSamples };
 }
 
+/**
+ * 타임라인 싱크 합치기: 각 장면 음성을 startSec 위치에 그대로 배치한다.
+ * - 구간 사이는 무음으로 채워 영상 컷과 길이를 맞춘다.
+ * - 앞 장면이 다음 장면의 startSec을 넘어가면 음성을 자르지 않고 바로 뒤에 붙이며,
+ *   그 장면은 shifted 로 표시해 UI에서 알린다.
+ * - startSec이 없는 장면은 앞 장면 끝에 이어 붙인다.
+ * @param {Array<{samples: Int16Array, startSec?: number|null, index?: number}>} items
+ * @param {{ totalSec?: number|null, sampleRate?: number }} [options]
+ * @returns {{
+ *   bytes: Uint8Array, totalSamples: number, totalSec: number,
+ *   segments: Array<{startAt: number, index: number, plannedStartSec: number, startSec: number, endSec: number, durationSec: number, shiftedSec: number, shifted: boolean, explicit: boolean}>,
+ *   shifted: Array<object>, ordered: boolean,
+ * }}
+ */
+export function buildTimelineTrack(items, { totalSec = null, sampleRate = CANONICAL_FORMAT.sampleRate } = {}) {
+  const rate = Math.max(8000, Number(sampleRate) || CANONICAL_FORMAT.sampleRate);
+  const usable = (items || []).filter((item) => item && item.samples && item.samples.length);
+  const segments = [];
+  let cursor = 0;
+  let ordered = true;
+  let previousPlanned = null;
+
+  usable.forEach((item, position) => {
+    const explicit =
+      item.startSec !== null && item.startSec !== undefined && Number.isFinite(Number(item.startSec));
+    const plannedSec = explicit ? Math.max(0, Number(item.startSec)) : cursor / rate;
+    if (explicit && previousPlanned !== null && plannedSec < previousPlanned) ordered = false;
+    if (explicit) previousPlanned = plannedSec;
+
+    const planned = Math.round(plannedSec * rate);
+    const startAt = Math.max(planned, cursor); // 앞 음성을 잘라내지 않는다
+    const length = item.samples.length;
+    segments.push({
+      startAt,
+      index: Number.isFinite(Number(item.index)) ? Number(item.index) : position,
+      plannedStartSec: planned / rate,
+      startSec: startAt / rate,
+      endSec: (startAt + length) / rate,
+      durationSec: length / rate,
+      shiftedSec: explicit ? (startAt - planned) / rate : 0,
+      shifted: explicit && startAt > planned,
+      explicit,
+    });
+    cursor = startAt + length;
+  });
+
+  const padSec =
+    totalSec !== null && totalSec !== undefined && Number.isFinite(Number(totalSec)) ? Math.max(0, Number(totalSec)) : 0;
+  const totalSamples = Math.max(cursor, Math.round(padSec * rate), 0);
+  const merged = new Int16Array(totalSamples);
+  usable.forEach((item, position) => {
+    merged.set(item.samples, segments[position].startAt);
+  });
+
+  return {
+    bytes: encodeWav(int16ToBytes(merged), { ...CANONICAL_FORMAT, sampleRate: rate }),
+    totalSamples,
+    totalSec: totalSamples / rate,
+    segments,
+    shifted: segments.filter((segment) => segment.shifted),
+    ordered,
+  };
+}
+
 /** 재생/모니터용 파형 피크. 0~1 사이 값 배열. */
 export function buildPeaks(samples, buckets = 160) {
   const count = Math.max(1, Math.floor(buckets));
