@@ -650,6 +650,7 @@ async function generateOne(scene) {
     renderKeyState();
     progress.querySelector('i').style.width = '100%';
     $('#gen-msg').textContent = `${scene.title || '장면'} 완료 · ${formatDuration(audioStore.get(scene.id)?.duration || 0)}`;
+    setTimeout(() => { progress.hidden = true; }, 1600);
     if (!currentSceneId) setCurrentScene(scene.id, { autoplay: true });
   } catch (error) {
     scene._error = error.message || '생성에 실패했어요.';
@@ -665,8 +666,8 @@ async function generateOne(scene) {
     genController = null;
     $('#cancel-all').hidden = true;
     setTimeout(() => {
-      if (!$('#gen-msg').textContent.includes('완료')) progress.hidden = true;
-    }, 900);
+      progress.hidden = true;
+    }, 1200);
     refreshAllCards();
   }
 }
@@ -791,6 +792,9 @@ async function generateAll() {
   $('#gen-msg').textContent = failed
     ? `완료 ${done} · 실패 ${failed} — 실패한 장면은 따로 다시 생성해 주세요.`
     : `완료 ${done}/${targets.length} · 전환 무음 ${state.gap}ms`;
+  setTimeout(() => {
+    progress.hidden = true;
+  }, 2200);
   refreshAllCards();
   if (done) toast(`${done}개 장면 음성을 만들었어요.`);
 }
