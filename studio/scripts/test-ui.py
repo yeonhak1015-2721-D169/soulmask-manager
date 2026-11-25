@@ -350,6 +350,10 @@ def main():
               page.locator('#split-preview').inner_text())
         check('붙여넣기 미리보기에 타임라인 범위', '00:00~00:12' in page.locator('#split-preview').inner_text(),
               page.locator('#split-preview').inner_text())
+        page.fill('#split-input', '1\n00:00:00,000 --> 00:00:05,000\n자막 형식 대사')
+        page.wait_for_timeout(200)
+        check('자막(SRT) 시각 줄은 경고로 알림', '자막(SRT)' in page.locator('#split-warn').inner_text(),
+              page.locator('#split-warn').inner_text())
         page.click('#sheet-root [data-close]')
         page.wait_for_timeout(200)
         check('시트 닫힘', page.locator('#sheet-root .sheet').count() == 0)

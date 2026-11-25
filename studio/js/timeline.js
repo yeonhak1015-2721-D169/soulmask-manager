@@ -20,7 +20,7 @@
 /* ---------- 시간 표기 ---------- */
 
 const TIME_PATTERN = '\\d{1,3}(?::\\d{1,2}){1,2}(?:[.,]\\d{1,3})?';
-const DASH_PATTERN = '[-~–—−〜～]|→|->';
+const DASH_PATTERN = '-->|→|->|[-~–—−〜～]';
 const HEADER_RE = new RegExp(
   `^\\s*[\\[【]\\s*(${TIME_PATTERN})\\s*(?:(?:${DASH_PATTERN})\\s*(${TIME_PATTERN}))?\\s*[\\]】]\\s*(.*)$`,
 );

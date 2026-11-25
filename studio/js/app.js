@@ -1254,17 +1254,21 @@ function openSplitSheet({ text = '', mode: initialMode = null, fileName = '' } =
 
   const split = () => {
     const raw = input.value.replace(/\r\n?/g, '\n');
+    const srtLike =
+      /\d{1,2}:\d{2}(?::\d{2})?[.,]?\d{0,3}\s*(?:-->|→)\s*\d{1,2}:\d{2}/.test(raw)
+        ? ['자막(SRT) 형식의 시각 줄은 구간으로 읽지 않아요. 그 줄은 [00:00 ~ 00:10] 형식으로 바꿔 주세요.']
+        : [];
     if (mode === 'timeline') {
       const parsed = parseTimelineText(raw);
       if (parsed.scenes.length) {
-        return { scenes: parsed.scenes, warnings: parsed.warnings, empty: false, parsed };
+        return { scenes: parsed.scenes, warnings: parsed.warnings.concat(srtLike), empty: false, parsed };
       }
-      if (!raw.trim()) return { scenes: [], warnings: [], empty: true, parsed };
+      if (!raw.trim()) return { scenes: [], warnings: srtLike, empty: true, parsed };
       // 구간 표기가 없으면 빈 줄 나누기로 되돌린다.
       const chunks = raw.split(/\n\s*\n+/).map((chunk) => chunk.trim()).filter(Boolean);
       return {
         scenes: chunks.map((chunk) => ({ text: chunk, timelineLabel: null, startSec: null, endSec: null })),
-        warnings: ['타임라인 구간 표기를 찾지 못해 빈 줄로 나눴어요.'],
+        warnings: ['타임라인 구간 표기를 찾지 못해 빈 줄로 나눴어요.'].concat(srtLike),
         empty: false,
         parsed,
       };
@@ -1275,7 +1279,7 @@ function openSplitSheet({ text = '', mode: initialMode = null, fileName = '' } =
         .map((chunk) => chunk.trim())
         .filter(Boolean)
         .map((chunk) => ({ text: chunk, timelineLabel: null, startSec: null, endSec: null })),
-      warnings: [],
+      warnings: srtLike,
       empty: true,
       parsed: null,
     };

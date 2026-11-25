@@ -135,6 +135,11 @@ group('3. 유연한 구간 표기');
 
   const spaced = tl.parseTimelineText('  [ 00:00~00:10 ]  \n가');
   check('공백이 많은 표기', spaced.scenes.length === 1 && spaced.scenes[0].startSec === 0, spaced.scenes.length);
+
+  const arrow = tl.parseTimelineText('[00:00 --> 00:10]\n가');
+  check('화살표 구간 [00:00 --> 00:10]',
+    arrow.scenes.length === 1 && arrow.scenes[0].startSec === 0 && arrow.scenes[0].endSec === 10,
+    arrow.scenes.length ? `${arrow.scenes[0].startSec}~${arrow.scenes[0].endSec}` : 'none');
 }
 
 /* 4. CRLF / BOM */
