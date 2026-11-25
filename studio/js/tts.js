@@ -29,11 +29,13 @@ export const DEFAULT_PROMPT = `젊고 낮은 남성 목소리의 한국어 게�
 export const MODELS = [
   {
     id: 'gemini-2.5-flash-preview-tts',
+    short: '2.5-flash-preview-tts',
     label: '안정 · 무료 티어',
     note: '2.5 Flash TTS — 검증된 기본 엔진',
   },
   {
     id: 'gemini-3.8-flash-tts',
+    short: '3.8-flash-tts',
     label: '최신 · 무료 티어',
     note: '3.8 Flash TTS — 최신 음성 엔진',
   },
