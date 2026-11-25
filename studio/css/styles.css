@@ -21,6 +21,7 @@
   --radius-sm: 11px;
   --shadow: 0 18px 40px rgba(0, 0, 0, .55);
   --tap: 44px;
+  --topbar-h: 61px;
   --font-sans: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont, 'Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic', sans-serif;
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -57,6 +58,7 @@ a { color: var(--amber); text-underline-offset: 3px; }
 .topbar {
   position: sticky; top: 0; z-index: 30;
   display: flex; align-items: center; gap: 12px;
+  min-height: var(--topbar-h);
   padding: 12px 16px calc(10px + 0px);
   background: linear-gradient(180deg, rgba(7, 8, 10, .96) 60%, rgba(7, 8, 10, .82));
   backdrop-filter: blur(14px);
@@ -73,6 +75,20 @@ a { color: var(--amber); text-underline-offset: 3px; }
 }
 .brand h1 { font-size: 16px; font-weight: 800; line-height: 1.25; }
 .brand p { font-size: 11.5px; color: var(--muted-2); letter-spacing: 0; }
+.topbar-actions { display: flex; align-items: center; gap: 8px; flex: none; }
+/* 다른 앱(소울마스크 플래너)으로 이동하는 헤더 칩 */
+.app-switch {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  height: 32px; padding: 0 11px;
+  border: 1px solid rgba(245, 158, 11, .38); border-radius: 999px;
+  background: var(--amber-soft); color: #ffd79a;
+  font-size: 12px; font-weight: 700; letter-spacing: -.01em;
+  text-decoration: none; white-space: nowrap; flex: none;
+  transition: background .15s ease, border-color .15s ease, color .15s ease, transform .08s ease;
+}
+.app-switch .as-ico { font-size: 12.5px; line-height: 1; }
+.app-switch:hover { background: rgba(245, 158, 11, .22); border-color: var(--amber); color: #ffe4b8; }
+.app-switch:active { transform: scale(.97); }
 .status-chip {
   flex: none;
   display: inline-flex; align-items: center; gap: 6px;
@@ -87,13 +103,29 @@ a { color: var(--amber); text-underline-offset: 3px; }
 .status-chip[data-state="warn"] { border-color: var(--amber-line); color: #ffd79a; }
 .status-chip[data-state="warn"] .dot { background: var(--amber); }
 
+@media (max-width: 400px) {
+  .topbar { gap: 8px; padding-left: 12px; padding-right: 12px; }
+  .brand { gap: 8px; }
+  .brand h1 { font-size: 15px; }
+  .topbar-actions { gap: 6px; }
+  .status-chip { padding: 0 9px; font-size: 11.5px; }
+  .app-switch { padding: 0 9px; font-size: 11.5px; gap: 4px; }
+  .app-switch .as-ico { font-size: 12px; }
+}
+@media (max-width: 360px) {
+  /* 아주 좁은 화면에서는 제목이 줄바꿈되지 않도록 상태 칩을 점만 남깁니다. */
+  .status-chip { padding: 0 8px; }
+  .status-chip #status-text { display: none; }
+  .app-switch { padding: 0 8px; }
+}
+
 .quicknav {
   display: flex; gap: 6px; overflow-x: auto;
   padding: 8px 16px 10px;
   scrollbar-width: none;
   border-bottom: 1px solid var(--line-soft);
   background: rgba(7, 8, 10, .92);
-  position: sticky; top: 63px; z-index: 29;
+  position: sticky; top: var(--topbar-h); z-index: 29;
   backdrop-filter: blur(12px);
 }
 .quicknav::-webkit-scrollbar { display: none; }

@@ -101,6 +101,28 @@ a { color: var(--gold); }
   border: 1px solid var(--line); border-radius: 999px;
   padding: 5px 9px; white-space: nowrap; background: var(--surface);
 }
+/* 다른 앱(내레이션 스튜디오)으로 이동하는 헤더 칩 */
+.app-switch {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  min-height: 32px; padding: 4px 10px;
+  border: 1px solid rgba(212, 155, 84, .4); border-radius: 999px;
+  background: rgba(212, 155, 84, .1);
+  color: #e9bd8a;
+  font-size: 12px; font-weight: 700; letter-spacing: -.01em;
+  text-decoration: none; white-space: nowrap; flex: none;
+  transition: background .15s ease, border-color .15s ease, color .15s ease, transform .08s ease;
+}
+.app-switch .as-ico { font-size: 12.5px; line-height: 1; }
+.app-switch:hover { background: rgba(212, 155, 84, .2); border-color: var(--gold); color: #ffd9a6; }
+.app-switch:active { transform: scale(.97); }
+@media (max-width: 480px) {
+  /* 좁은 화면에서는 제목·부제가 한 줄로 유지되도록 날짜 칩을 숨깁니다.
+     (날짜는 대시보드 '오늘' 카드·할 일 날짜 이동줄에 그대로 나옵니다) */
+  .topbar-right { gap: 8px; }
+  .app-switch { padding: 4px 10px; font-size: 11.5px; gap: 4px; }
+  .app-switch .as-ico { font-size: 12px; }
+  #today-chip { display: none; }
+}
 .view-root { padding: 14px 14px 28px; max-width: 1180px; margin: 0 auto; }
 .view-root:focus { outline: none; }
 

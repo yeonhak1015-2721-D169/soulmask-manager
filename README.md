@@ -33,10 +33,16 @@ js/sync.js            GitHub Gist 동기화(토큰은 기기에만)
 js/ai-io.js           AI 복사 텍스트 · Markdown 내보내기 · 일괄 등록 파서
 js/tribes-util.js     정원·직업 계산 · 숙련도 등급 자동 판정
 js/views/*.js         9개 화면
-manifest.json, sw.js  PWA 설치 · 오프라인 캐시(soulmask-planner-v9)
+manifest.json, sw.js  PWA 설치 · 오프라인 캐시(soulmask-planner-v10, /studio/ 경로는 통과)
 icons/                앱 아이콘 (icon-180 / 192 / 512 / maskable / 1024 원본)
 scripts/build-android-apk.sh  안드로이드 APK 빌드 스크립트 (GitHub Actions가 실행)
 ```
+
+## 내레이션 스튜디오와 오가기
+
+헤더 오른쪽의 **🎙️ 스튜디오** 버튼으로 하기 로그 내레이션 스튜디오(`/studio/`)를 열고, 스튜디오 헤더의 **📋 플래너** 버튼으로 이 보드로 돌아옵니다(설치한 PWA 안에서도 같은 창으로 이동).
+모바일(480px 이하)에서는 제목·부제가 한 줄로 유지되도록 헤더의 날짜 칩을 숨깁니다. 날짜는 대시보드 '오늘' 카드와 할 일 날짜 이동줄에 그대로 나옵니다.
+`sw.js`(v10)는 `/studio/` 아래 요청을 캐시에 담지 않고 그대로 통과시켜, 두 앱의 HTML이 서로의 오프라인 캐시를 덮어쓰지 않습니다.
 
 ## 숙련도 등급 자동 판정
 
